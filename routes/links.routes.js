@@ -508,18 +508,36 @@ appRoutes.post("/import", async (req, res) => {
     token='eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc1MTA0OTgsImlhdCI6MTY0NjMwMDg5OCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Q2rDGARbsRauv1WgOUjluIBxjRy_fKoRu9YpyNzk8mhTucR2Hc-IkVZhBw3Wb1jVy5QNlviJsB3ckBr-kH4aAaD7eK85zmA1U283Q1AOEZMkumQIs2mysdCZ6T-ugnq8g4OalQk6JteXsfOJmyXB_Sxc4sJhMmK2rGe7BIyKszl8aGqX0qMQmyn6AGYI-uOuuLvL8KhQ562v84Woufbw4qg5yJZc3GrWD63ZwFbJ0HvDW7u0_IhhGPlyvxFdby0ZtoOA3y_wCiy0hMt4bvw0pD-i7r1mcRdO9pE2dyMnO2xl8auzSIACpmekF1XOm8MGQA_jWWbyIKmA9DyAcpu3d3U-vzsOAKbCbJFaYgzq9THBA06e3rRHSRo2ZsY-eDy2Li4s6HJtSZ78qrLlrNp4aFwcoQ9dNn7gLXI1aAPyEns1d3x0wzSFWhWRmz2kEc0rURHgo5AveWmh3vETnWn2uVNPaPGLt66HbYkvrNLbLlndQFY3rEk8pASMFVSVMEve'
     const media = await sql.query(``);
     // for (let i = 0; i < dates.length; i++) {
-        await guestChecks(req.body.date, 10, 1, token, res);
+        // await guestChecks(req.body.date, 10, 1, token, res);
+        allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token, res)
     // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
   //  guestChecks("2022-02-23", 10, 1,res)
 //   res.json("done")
 })
+appRoutes.get("/codes",async(req,res)=>{
+    await sql.connect(config)
+    const interfaseCode = await sql.query(`SELECT interfaceCode From  interfaceDefinition `);//retrive all interface code
+    const mappingCode = await sql.query(`SELECT MappingCode FROM MappingDefinition `);//retrive all mapping code
+   res.json({mapping:mappingCode.recordset ,intreface:interfaseCode.recordset})
+})
+appRoutes.get('/interfaceCode', async (req, res) => {
+    //used to establish connection between database and the middleware
+    await sql.connect(config)
+    const interfacedata = await sql.query(`SELECT interfaceCode From  interfaceDefinition `)
+      //used to establish connection between database and the middleware
+      const apidata = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings'`)
+    res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
+
+});
+
 appRoutes.get("/", async (req, res) => {
 res.json(status)
 })
-async function allForOne(dat, limit, start, apiName, body, res) {
+async function allForOne(dat, limit, start, apiName, body, token, res) {
     await sql.connect(config)
+    console.log(body);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
@@ -529,7 +547,7 @@ async function allForOne(dat, limit, start, apiName, body, res) {
                     // older servers may use 'text/json'.
                     // See: http://bit.ly/text-json
                     'content-type': 'application/json',
-                    'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+                    'Authorization': 'Bearer '+token
                 }
             });
             let oneForAll = []
@@ -569,21 +587,26 @@ async function allForOne(dat, limit, start, apiName, body, res) {
             }
             status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES (${apiName},'${dat}','Successful')`);
+                let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Successful')`);
             }
+            else
+                res.json({api:apiName,date:dat,stats:'Successfully'})
     }
     catch (error) {
         start++;
-        console.log(error);
+        console.log(error.message);
         if (start <= limit)
             setTimeout(function () {
-                allForOne(dat, limit, start, apiName, body, res);
+                allForOne(dat, limit, start, apiName, body, token, res);
             }, 3000);
         else {
-            status.push({api:apiName,date:dat,stats:'field'})
             // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES (${apiName},'${dat}','Not Successful')`);
-
-            console.log('stackoverflow');
+            console.log(dat,"field");
+            status.push({api:apiName,date:dat,stats:'field'})
+            if (res==undefined){
+            // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Not Successful')`);
+            }
+            res.json({api:apiName,date:dat,stats:'Field'})
         }
     }
 }
@@ -650,7 +673,9 @@ appRoutes.get('/SysData', async (req, res) => {
     //used to establish connection between database and the middleware
     await sql.connect(config)
     let data = []//an empty array used to push all column names with it's table name
-    const tables = await sql.query(`SELECT name FROM sys.Tables  where name != `);//retrive all tables name
+    
+    const tables = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings'`);//retrive all tables name
+    console.log(tables);
     for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
         let x = {}//object that will hold each table name with it's columns
         //retrive all columns name
