@@ -128,17 +128,18 @@ async function guestChecks(dat, limit, start, token, res) {
             let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Successful')`);
         }
         status.push({API:"Guest Checks",date:dat,status:'success'})
-        // res.json(oneForAll)
+        res.json({date:dat,stats:"Successfylly"})
     } catch (error) {
         start++;
         console.log(error);
         if (start <= limit)
             setTimeout(function () {
-                guestChecks(dat, limit, start,res);
+                guestChecks(dat, limit, start, token, res);
             }, 3000);
         else {
             console.log(dat,"field");
-            stats.push({API:"Guest Checks",date:dat,stats:'field'})
+            res.json({date:dat,stats:"field"})
+            status.push({API:"Guest Checks",date:dat,stats:'field'})
             if (res==undefined){
             // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Not Successful')`);
             }
@@ -501,13 +502,14 @@ catch (error) {
 }
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
-appRoutes.get("/import", async (req, res) => {
-    let dates=getDaysArray("2022-02-20","2022-02-23")
+appRoutes.post("/import", async (req, res) => {
+    // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
+    token='eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc1MTA0OTgsImlhdCI6MTY0NjMwMDg5OCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Q2rDGARbsRauv1WgOUjluIBxjRy_fKoRu9YpyNzk8mhTucR2Hc-IkVZhBw3Wb1jVy5QNlviJsB3ckBr-kH4aAaD7eK85zmA1U283Q1AOEZMkumQIs2mysdCZ6T-ugnq8g4OalQk6JteXsfOJmyXB_Sxc4sJhMmK2rGe7BIyKszl8aGqX0qMQmyn6AGYI-uOuuLvL8KhQ562v84Woufbw4qg5yJZc3GrWD63ZwFbJ0HvDW7u0_IhhGPlyvxFdby0ZtoOA3y_wCiy0hMt4bvw0pD-i7r1mcRdO9pE2dyMnO2xl8auzSIACpmekF1XOm8MGQA_jWWbyIKmA9DyAcpu3d3U-vzsOAKbCbJFaYgzq9THBA06e3rRHSRo2ZsY-eDy2Li4s6HJtSZ78qrLlrNp4aFwcoQ9dNn7gLXI1aAPyEns1d3x0wzSFWhWRmz2kEc0rURHgo5AveWmh3vETnWn2uVNPaPGLt66HbYkvrNLbLlndQFY3rEk8pASMFVSVMEve'
     const media = await sql.query(``);
-    for (let i = 0; i < dates.length; i++) {
-        await guestChecks(dates[i].toISOString().split("T")[0], 10, 1,res);
-    }
+    // for (let i = 0; i < dates.length; i++) {
+        await guestChecks(req.body.date, 10, 1, token, res);
+    // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
   //  guestChecks("2022-02-23", 10, 1,res)
@@ -587,7 +589,7 @@ async function allForOne(dat, limit, start, apiName, body, res) {
 }
 appRoutes.post("/authorization", async (req, res) => {
     console.log(req.body);
-    job.reschedule(req.body.ApiSchedule);
+    //job.reschedule(req.body.ApiSchedule);
     let resp;
     let clientId=req.body.clientId
     let username=req.body.userName
@@ -624,6 +626,8 @@ appRoutes.post("/authorization", async (req, res) => {
             }
         , withCredentials: true });
         token=resp2.data.id_token
+       let  refresh_token =resp2.data.refresh_token
+           //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         if(error.message.includes(400))
@@ -704,23 +708,21 @@ appRoutes.post('/mapping', async (req, res) => {
     await sql.connect(config)
     console.log(req.body);
     //to change the level and Revenue from empty string to null as it should be int 
-    if (req.body.mapp == 'Account') {
-        req.body.level = null
-        req.body.Revenue = null
-    }
+
     for (let i = 0; i < req.body.length; i++) {
-        if (req.body[i].mapp == 'Account') {
-            req.body[i].level = null
-            req.body[i].Revenue = null
+        if (req.body[i].MappingType == 'Account') {
+            req.body[i].Level = null
+            req.body[i].RevenuCenter = null
         }
           //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
     //const val = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
 
-     const values = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].mapp}','${req.body[i].value}','${req.body[i].Revenue}','${req.body[i].level}','${req.body[i].input}')`);
- 
-    }
-   
+     const values = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
 
+    }
+    const val = await sql.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
+    
+console.log(req.body[0].MappingCode);
 
 
     //used to close the connection between database and the middleware
