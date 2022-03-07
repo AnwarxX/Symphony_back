@@ -19,9 +19,8 @@ const qs = require("qs")
 //     //await guestChecks(dat);
 //     // await guestChecksDetails(dat);
 // });
-
 var status=[];
-// let scJop=[]
+ let scJop=[]
 
 // const job = schedule.scheduleJob('* * * * * *', async function () {
 //     status = [];
@@ -80,7 +79,6 @@ var status=[];
 //     }
 //     // }
 // }
-
 async function guestChecks(dat, limit, start, token, res) {
     let resp;
     console.log('start', start);
@@ -107,28 +105,47 @@ async function guestChecks(dat, limit, start, token, res) {
         for (let i = 0; i < oneForAll.length; i++) {
             let data = "'" + resp.data.locRef + "',";
             let columns = "locRef,";
+            let check=""
             for (let j = 0; j < Object.keys(oneForAll[i]).length - 1; j++) {
 
                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+                    check+=Object.keys(oneForAll[i])[j]+"=0 and "
                     data += "0,"
                 }
                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+                    check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
                 }
-                else
+                else{
                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+                    check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]]+"'"+" and "
+                }
                 columns += Object.keys(oneForAll[i])[j] + ","
             }
             console.log(columns);
             console.log(data);
+            const media = await sql.query(
+                `IF NOT EXISTS (SELECT * FROM getGuestChecks
+                    WHERE ${check.slice(0, -4)})
+                    BEGIN
+                    INSERT INTO getGuestChecks (${columns.slice(0, -1)})
+                    VALUES (${data.slice(0, -1)})
+                    END`);
             //this query is used to insert the vales in thier columns
             // const media = await sql.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
         }
         if (res==undefined) {
-            let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Successful')`);
+            let status = await sql.query(
+                `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE ApiName='getGuestChecks' and Date='${dat}' and Status='Successful')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES ('getGuestChecks','${dat}','Successful')
+                    END`)
+                    status.push({API:"getGuestChecks",date:dat,status:'success'})
         }
-        status.push({API:"Guest Checks",date:dat,status:'success'})
-        res.json({date:dat,stats:"Successfylly"})
+        else
+            res.json({api:"getGuestChecks",date:dat,stats:"Successfylly"})
     } catch (error) {
         start++;
         console.log(error);
@@ -141,13 +158,21 @@ async function guestChecks(dat, limit, start, token, res) {
             res.json({date:dat,stats:"field"})
             status.push({API:"Guest Checks",date:dat,stats:'field'})
             if (res==undefined){
-            // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Not Successful')`);
+                let status = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES (getGuestChecks,'${dat}','Failed')
+                    END`)
             }
+            else
+                res.json({api:"getGuestChecks",date:dat,stats:'Field'})
         }
         // }
     }
 }
-async function guestChecksDetails(dat, limit, start) {
+async function guestChecksDetails(dat, limit, start, token, res) {
     console.log("guestChecksDetails");
     await sql.connect(config)
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
@@ -191,315 +216,72 @@ async function guestChecksDetails(dat, limit, start) {
                 }
             }
             for (let i = 0; i < oneForAll.length; i++) {
-                let data = "";
-                let columns = "";
-                for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                    if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                        data += "0,"
-                    }
-                    else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                        data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                    }
-                    else
-                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-                    columns += Object.keys(oneForAll[i])[j] + ","
-                }
-                console.log(columns.slice(0, -1, Object.keys(oneForAll[i]).length));
-                console.log(data.slice(0, -1));
-                // const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
-            }
-        }
-        let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecksDetails','${dat}','Successful')`);
-
-        return await oneForAll;
-    } catch (error) {
-        start++;
-        console.log(error);
-        if (start <= limit)
-            setTimeout(function () {
-                guestChecksDetails(dat, limit, start);
-            }, 300000);
-        else {
-            let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecksDetails','${dat}','Not Successful')`);
-
-            console.log('stackoverflow');
-        }
-    }
-}
-async function TaxDailyTotal(dat, limit, start) {
-    await sql.connect(config)
-    try {
-        for (let i = 0; i < 8; i++) {
-            //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-            //the data from the API
-            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": dat }, {
-                headers: {
-                    // 'application/json' is the modern content-type for JSON, but some
-                    // older servers may use 'text/json'.
-                    // See: http://bit.ly/text-json
-                    'content-type': 'application/json',
-                    'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-                }
-            });
-            let oneForAll = []
-            for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-                for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                    for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                        let obj = {}
-                        obj["locRef"] = resp.data.locRef
-                        obj["busDt"] = resp.data.busDt
-                        obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
-                        for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                            console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                            obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                        }
-                        oneForAll.push(obj)
-                    }
-                }
-            }
-            for (let i = 0; i < oneForAll.length; i++) {
                 let columns = ""
                 let data = ""
+                let check=""
                 for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
                     columns += Object.keys(oneForAll[i])[j] + ','
                     // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
                     if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+                        check+=Object.keys(oneForAll[i])[j]+"=0 and "
                         data += "0,"
                     }
                     else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+                        check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
                         data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
                     }
-                    else
+                    else{
+                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]]+"'"+" and "
                         data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+                    }
                 }
                 console.log(columns);
                 console.log(data);
-                // const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+                console.log(check);
+                const addCase = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                        WHERE ${check.slice(0, -4)})
+                        BEGIN
+                        INSERT INTO ImportStatus (${columns.slice(0, -1)})
+                        VALUES (${data.slice(0, -1)})
+                        END`);
+                // const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
             }
         }
-        let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('TaxDailyTotal','${dat}','Successful')`);
-
-        return await oneForAll;
-    } 
-    catch (error) {
+        status.push({API:"Guest Checks",date:dat,status:'success'})
+        if (res==undefined) {
+            let status = await sql.query(
+                `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                    WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES ('guestChecksDetails','${dat}','Successful')
+                    END`)
+        }
+        else{
+            res.json({date:dat,stats:"Successfylly"})
+        }
+    } catch (error) {
         start++;
-        console.log(error);
+        console.log(error.message);
         if (start <= limit)
             setTimeout(function () {
-                TaxDailyTotal(dat, limit, start);
-            }, 300000);
+                guestChecksDetails(dat, limit, start, token, res);
+            }, 3000);
         else {
-            let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('TaxDailyTotal','${dat}','Not Successful')`);
-
-            console.log('stackoverflow');
+            status.push({api:apiName,date:dat,stats:'field'})
+            if (res==undefined)
+                await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                        WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed')
+                        BEGIN
+                        INSERT INTO ImportStatus (ApiName,Date,Status)
+                        VALUES ('guestChecksDetails','${dat}','Failed')
+                        END`);
+            else
+                res.json({api:apiName,date:dat,stats:'Field'})
         }
     }
-}
-async function tenderMediaDaily(dat, limit, start) {
-    await sql.connect(config)
-    //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-    //the data from the API
-    try {
-    for (let i = 0; i < 8; i++) {
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTenderMediaDailyTotals', { "locRef": "CHGOUNA", "busDt": dat }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        let oneForAll = []
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}
-                    obj["locRef"] = resp.data.locRef
-                    obj["busDt"] = resp.data.busDt
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)
-                }
-            }
-        }
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('TaxDailyTotal','${dat}','Successful')`);
-
-    return await oneForAll;
-} 
-catch (error) {
-    start++;
-    console.log(error);
-    if (start <= limit)
-        setTimeout(function () {
-            TaxDailyTotal(dat, limit, start);
-        }, 300000);
-    else {
-        let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('TaxDailyTotal','${dat}','Not Successful')`);
-
-        console.log('stackoverflow');
-    }
-}
-}
-async function ServiceChargeDailyTotals(dat, limit, start) {
-    await sql.connect(config)
-    //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-    //the data from the API
-    try{
-    for (let i = 0; i < 8; i++) {
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getServiceChargeDailyTotals', { "locRef": "CHGOUNA", "busDt": dat }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        let oneForAll = []
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}
-                    obj["locRef"] = resp.data.locRef
-                    obj["busDt"] = resp.data.busDt
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)
-                }
-            }
-        }
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-          //  const addCase = await sql.query(`INSERT INTO ServiceChargeDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('ServiceChargeDailyTotals','${dat}','Successful')`);
-
-    return await oneForAll;
-} 
-catch (error) {
-    start++;
-    console.log(error);
-    if (start <= limit)
-        setTimeout(function () {
-            TaxDailyTotal(dat, limit, start);
-        }, 300000);
-    else {
-        let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('ServiceChargeDailyTotals','${dat}','Not Successful')`);
-
-        console.log('stackoverflow');
-    }
-}
-}
-async function DiscountDailyTotals(dat, limit, start) {
-    await sql.connect(config)
-    //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-    //the data from the API
-    try {
-
-    for (let i = 0; i < 8; i++) {
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getDiscountDailyTotals', { "locRef": "CHGOUNA", "busDt": dat }, {
-            headers: {
-
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        let oneForAll = []
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}
-                    obj["locRef"] = resp.data.locRef
-                    obj["busDt"] = resp.data.busDt
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)
-                }
-            }
-        }
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //const addCase = await sql.query(`INSERT INTO DiscountDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('DiscountDailyTotals','${dat}','Successful')`);
-
-    return await oneForAll;
-} 
-catch (error) {
-    start++;
-    console.log(error);
-    if (start <= limit)
-        setTimeout(function () {
-            TaxDailyTotal(dat, limit, start);
-        }, 300000);
-    else {
-        let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('DiscountDailyTotals','${dat}','Not Successful')`);
-
-        console.log('stackoverflow');
-    }
-}
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
 appRoutes.post("/import", async (req, res) => {
@@ -531,7 +313,6 @@ appRoutes.get('/interfaceCode', async (req, res) => {
     res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
 
 });
-
 appRoutes.get("/", async (req, res) => {
 res.json(status)
 })
@@ -569,25 +350,44 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
             for (let i = 0; i < oneForAll.length; i++) {
                 let columns = ""
                 let data = ""
+                let check=""
                 for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
                     columns += Object.keys(oneForAll[i])[j] + ','
                     // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
                     if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+                        check+=Object.keys(oneForAll[i])[j]+"=0 and "
                         data += "0,"
                     }
                     else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+                        check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
                         data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
                     }
-                    else
+                    else{
+                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]]+"'"+" and "
                         data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+                    }
                 }
                 console.log(columns);
                 console.log(data);
+                console.log(check);
+                const addCase = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE ${check.slice(0, -4)})
+                        BEGIN
+                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
+                        VALUES (${columns.slice(0, -1)})
+                        END`);
                 // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Successful')`);
+                let status = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+                        BEGIN
+                        INSERT INTO ImportStatus (ApiName,Date,Status)
+                        VALUES ('${apiName}','${dat}','Successful')
+                        END`)
             }
             else
                 res.json({api:apiName,date:dat,stats:'Successfully'})
@@ -600,22 +400,29 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                 allForOne(dat, limit, start, apiName, body, token, res);
             }, 3000);
         else {
-            // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES (${apiName},'${dat}','Not Successful')`);
             console.log(dat,"field");
             status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
-            // let status = await sql.query(`INSERT INTO ImportStatus (ApiName,Date,Status) VALUES ('guestChecks','${dat}','Not Successful')`);
+                await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES (${apiName},'${dat}','Failed')
+                    END`);
             }
-            res.json({api:apiName,date:dat,stats:'Field'})
+            else
+                res.json({api:apiName,date:dat,stats:'Failed'})
         }
     }
 }
 appRoutes.post("/authorization", async (req, res) => {
+    await sql.connect(config)
     console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
     let resp;
     let clientId=req.body.clientId
-    let username=req.body.userName
+    let username=req.body.username
     let password=req.body.password
     let orgname=req.body.enterpriseShortName
     try {
@@ -649,8 +456,97 @@ appRoutes.post("/authorization", async (req, res) => {
             }
         , withCredentials: true });
         token=resp2.data.id_token
-       let  refresh_token =resp2.data.refresh_token
-           //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+        let runtime;
+        console.log(token);
+        let myDate=new Date(req.body.SunSchedule)
+        switch (req.body.SunScheduleStatue) {
+            case "day": {//every hour
+       
+              let hour = req.body.SunSchedule.split(":")[0];
+              let min = req.body.SunSchedule.split(":")[1];
+              runtime = `0 ${min} ${hour} * * *`
+              console.log(runtime);
+              break;
+            }
+            case "year": {
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+              console.log(runtime);
+       
+              break;
+            }
+            case "month": {
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+              console.log(runtime);
+       
+              break;
+            }
+            default:
+              break;
+          }
+          req.body.SunSchedule=runtime
+          myDate=new Date(req.body.ApiSchedule)
+          switch (req.body.ApiScheduleStatue) {
+              case "apiday": {//every hour
+                let hour = req.body.ApiSchedule.split(":")[0];
+                let min = req.body.ApiSchedule.split(":")[1];
+                runtime = `0 ${min} ${hour} * * *`
+                console.log(runtime);
+                break;
+              }
+              case "apiyear": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+                console.log(runtime);
+         
+                break;
+              }
+              case "apimonth": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+                console.log(runtime);
+         
+                break;
+              }
+              default:
+                break;
+            }
+        req.body.ApiSchedule=runtime
+        let  refresh_token =resp2.data.refresh_token
+        let columns = ""
+        let data = ""
+        let check=""
+        for (let j = 0; j < Object.keys(req.body).length; j++) {
+            columns += Object.keys(req.body)[j] + ','
+            // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+            if ((req.body[Object.keys(req.body)[j]] == null)) {
+                check+=Object.keys(req.body)[j]+"=0 and "
+                data += "0,"
+            }
+            else if (typeof (req.body[Object.keys(req.body)[j]]) == "number") {
+                check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" and "
+                data += req.body[Object.keys(req.body)[j]] + ","
+            }
+            else{
+                check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" and "
+                data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+            }
+        }
+        console.log(columns);
+        console.log(data);
+        console.log(check);
+        console.log(
+            `IF NOT EXISTS (SELECT * FROM interfaceDefinition
+                WHERE ${check.slice(0, -4)})
+                BEGIN
+                INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+                VALUES (${data}'${token}','${refresh_token}')
+                END`);
+        const addCase = await sql.query(
+            `IF NOT EXISTS (SELECT * FROM interfaceDefinition
+                WHERE ${check.slice(0, -4)})
+                BEGIN
+                INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+                VALUES (${data}'${token}','${refresh_token}')
+                END`);
+        //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         if(error.message.includes(400))
@@ -658,6 +554,8 @@ appRoutes.post("/authorization", async (req, res) => {
         else if(error.message.includes(401)){
             res.json("Invalid username ,password or enterprise name")
         }
+        else
+            console.log(error.message);
     }
 })
 appRoutes.post('/delete', async (req, res) => {
@@ -742,10 +640,23 @@ appRoutes.post('/mapping', async (req, res) => {
           //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
     //const val = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
 
-     const values = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
-
+    //  const values = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
+     const values = await sql.query(
+        `IF NOT EXISTS (SELECT * FROM Mapping
+            WHERE MappingCode='${req.body[i].MappingCode}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
+            BEGIN
+            INSERT INTO Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target)
+            VALUES ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
+            END`)
     }
-    const val = await sql.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
+    const val = await sql.query(
+        `IF NOT EXISTS (SELECT * FROM MappingDefinition
+            WHERE MappingCode='${req.body[0].MappingCode}' and Description='${req.body[0].Description}')
+            BEGIN
+            INSERT INTO MappingDefinition (MappingCode,Description)
+            VALUES ('${req.body[0].MappingCode}','${req.body[0].Description}')
+            END`)
+    // const val = await sql.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
     
 console.log(req.body[0].MappingCode);
 
@@ -758,725 +669,732 @@ appRoutes.post('/PropertySettings', async (req, res) => {
     //used to establish connection between database and the middleware
     await sql.connect(config)
     //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
-    const values = await sql.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+    // const values = await sql.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+    const values = await sql.query(
+        `IF NOT EXISTS (SELECT * FROM PropertySettings
+            WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and ConnectionCode='${req.body.ConnectionCode}')
+            BEGIN
+            INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode)
+            VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')
+            END`)
     //used to close the connection between database and the middleware
     res.json(req.body)//viewing the data which is array of obecjts which is json
 });
+{
 //schedule endpoint
+// appRoutes.get('/guestChecks', async (req, res) => {
+//     let con = false
+//     let cun = 0
+//     let x;
+//     let dateArray=[]
+//     while (con == false) {
+//         console.log(cun);
+//         let x = await guestChecks("2022-02-15")
+//         if (x == 'error') {
+//             console.log("error");
+//             cun++;
+//             if (cun == 5) {
+//                 con = true
+//                 res.json(x)
+//             }
+//         }
+//         else {
+//             con = true
+//             res.json(x)
+//         }
+//         await timer(3000);
+//     }
+//     console.log(x);
+// });
+// //this endpoint is used to retrive all the guest checks for s specified location refrence and bussiness date
+// appRoutes.get('/guestChecks', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 6; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": date.addDays(new Date("2022-02-7"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         // here we asign the response data to a variable called oneforall
+//         let oneForAll = resp.data.guestChecks
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let data = "'" + resp.data.locRef + "',";
+//             let columns = "locRef,";
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length - 1; j++) {
 
-appRoutes.get('/guestChecks', async (req, res) => {
-    let con = false
-    let cun = 0
-    let x;
-    let dateArray=[]
-    while (con == false) {
-        console.log(cun);
-        let x = await guestChecks("2022-02-15")
-        if (x == 'error') {
-            console.log("error");
-            cun++;
-            if (cun == 5) {
-                con = true
-                res.json(x)
-            }
-        }
-        else {
-            con = true
-            res.json(x)
-        }
-        await timer(3000);
-    }
-    console.log(x);
-});
-//this endpoint is used to retrive all the guest checks for s specified location refrence and bussiness date
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//                 columns += Object.keys(oneForAll[i])[j] + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             //this query is used to insert the vales in thier columns
+//             //const media = await sql.query(`INSERT INTO getGuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data
+// });
+// //this endpoint is used to retrive all the guest checks lines details for  specified location refrence and bussiness date
+// appRoutes.get('/guestChecksDB', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 6; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": "2022-02-09", "opnBusDt": "2022-02-09" }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         let oneForAll = resp.data.guestChecks
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let data = "'" + resp.data.locRef + "',";
+//             let columns = "locRef,";
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length - 1; j++) {
 
-appRoutes.get('/guestChecks', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 6; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": date.addDays(new Date("2022-02-7"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        // here we asign the response data to a variable called oneforall
-        let oneForAll = resp.data.guestChecks
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let data = "'" + resp.data.locRef + "',";
-            let columns = "locRef,";
-            for (let j = 0; j < Object.keys(oneForAll[i]).length - 1; j++) {
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//                 columns += Object.keys(oneForAll[i])[j] + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             // const media = await sql.query(`INSERT INTO getGuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
 
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-                columns += Object.keys(oneForAll[i])[j] + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //this query is used to insert the vales in thier columns
-            //const media = await sql.query(`INSERT INTO getGuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data
-});
-//this endpoint is used to retrive all the guest checks lines details for  specified location refrence and bussiness date
-appRoutes.get('/guestChecksDB', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 6; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": "2022-02-09", "opnBusDt": "2022-02-09" }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        let oneForAll = resp.data.guestChecks
-        for (let i = 0; i < oneForAll.length; i++) {
-            let data = "'" + resp.data.locRef + "',";
-            let columns = "locRef,";
-            for (let j = 0; j < Object.keys(oneForAll[i]).length - 1; j++) {
+//     res.json(oneForAll)// text/json
+// });
+// //this endpoint is used to retrive all the guest checks lines details for  specified location refrence and bussiness date
+// appRoutes.get('/guestChecksDetails', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.guestChecks.length; i++) {
+//             //this loops iterates over all the datial lines in each row
+//             for (let j = 0; j < resp.data.guestChecks[i].detailLines.length; j++) {
+//                 let one = {}//this empty object was created to get the sub objects from the detail lines in a single object
+//                 one["guestCheckId"] = resp.data.guestChecks[i].guestCheckId//save the uniqe id with the object
+//                 //here to check if the value of a key in details line contains an object or not cuz if it does it will be addaed as a 
+//                 //key and value not as a sub object
+//                 for (let k = 0; k < Object.keys(resp.data.guestChecks[i].detailLines[j]).length; k++) {
+//                     if (typeof (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]) == "object" && resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]] != null) {
+//                         // console.log(Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]));
+//                         for (let f = 0; f < Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]).length; f++) {
+//                             one[Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]])[f]] = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]][Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]])[f]];
+//                         }
+//                     }
+//                     else {
+//                         let x = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]
+//                         if (typeof (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]) == "string")
+//                             if (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]].split(":").length == 3) {
+//                                 x = new Date(x).toISOString().slice(0, -1).replace('T', ' ');
+//                             }
+//                         one[Object.keys(resp.data.guestChecks[i].detailLines[j])[k]] = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]];
+//                     }
 
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-                columns += Object.keys(oneForAll[i])[j] + ","
-            }
-            console.log(columns);
-            console.log(data);
-            // const media = await sql.query(`INSERT INTO getGuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
+//                 }
+//                 oneForAll.push(one);//then push the reulted object in the oneforall array
 
-    res.json(oneForAll)// text/json
-});
-//this endpoint is used to retrive all the guest checks lines details for  specified location refrence and bussiness date
-appRoutes.get('/guestChecksDetails', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.guestChecks.length; i++) {
-            //this loops iterates over all the datial lines in each row
-            for (let j = 0; j < resp.data.guestChecks[i].detailLines.length; j++) {
-                let one = {}//this empty object was created to get the sub objects from the detail lines in a single object
-                one["guestCheckId"] = resp.data.guestChecks[i].guestCheckId//save the uniqe id with the object
-                //here to check if the value of a key in details line contains an object or not cuz if it does it will be addaed as a 
-                //key and value not as a sub object
-                for (let k = 0; k < Object.keys(resp.data.guestChecks[i].detailLines[j]).length; k++) {
-                    if (typeof (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]) == "object" && resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]] != null) {
-                        // console.log(Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]));
-                        for (let f = 0; f < Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]).length; f++) {
-                            one[Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]])[f]] = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]][Object.keys(resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]])[f]];
-                        }
-                    }
-                    else {
-                        let x = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]
-                        if (typeof (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]]) == "string")
-                            if (resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]].split(":").length == 3) {
-                                x = new Date(x).toISOString().slice(0, -1).replace('T', ' ');
-                            }
-                        one[Object.keys(resp.data.guestChecks[i].detailLines[j])[k]] = resp.data.guestChecks[i].detailLines[j][Object.keys(resp.data.guestChecks[i].detailLines[j])[k]];
-                    }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let data = "";
+//             let columns = "";
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//                 columns += Object.keys(oneForAll[i])[j] + ","
+//             }
+//             console.log(columns.slice(0, -1, Object.keys(oneForAll[i]).length));
+//             console.log(data.slice(0, -1));
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data
 
-                }
-                oneForAll.push(one);//then push the reulted object in the oneforall array
+// });
+// //this endpoint is used to retrive all the menu item price for specified location refrence and effiective date
+// appRoutes.get('/MenuItemPrices', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     // for (let i = 0; i < 8; i++) {
+//     //request is sent with a body includes location refrence , effiective date and a header containing the authorization token to retrive 
+//     //the data from the API
+//     const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemPrices', { "locRef": "CHGOUNA", "effFrDt": "2022-01-01" }, {
+//         headers: {
+//             // 'application/json' is the modern content-type for JSON, but some
+//             // older servers may use 'text/json'.
+//             // See: http://bit.ly/text-json
+//             'content-type': 'application/json',
+//             'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//         }
+//     });
+//     // here we asign the response data to a variable called oneforall
+//     let oneForAll = resp.data.menuItemPrices
+//     //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//     //the column names in a variable called columns then insert them in the table
+//     for (let i = 0; i < oneForAll.length; i++) {
+//         let data = "'" + resp.data.locRef + "',";
+//         let columns = "locRef,";
+//         for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
 
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let data = "";
-            let columns = "";
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-                columns += Object.keys(oneForAll[i])[j] + ","
-            }
-            console.log(columns.slice(0, -1, Object.keys(oneForAll[i]).length));
-            console.log(data.slice(0, -1));
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data
+//             if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                 data += "0,"
+//             }
+//             else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                 data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//             }
+//             else
+//                 data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             columns += Object.keys(oneForAll[i])[j] + ","
+//         }
+//         console.log(columns);
+//         console.log(data);
+//         //this query is used to insert the vales in thier columns
+//         const media = await sql.query(`INSERT INTO MenuItemPrices (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//     }
+//     // }
 
-});
-//this endpoint is used to retrive all the menu item price for specified location refrence and effiective date
-appRoutes.get('/MenuItemPrices', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    // for (let i = 0; i < 8; i++) {
-    //request is sent with a body includes location refrence , effiective date and a header containing the authorization token to retrive 
-    //the data from the API
-    const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemPrices', { "locRef": "CHGOUNA", "effFrDt": "2022-01-01" }, {
-        headers: {
-            // 'application/json' is the modern content-type for JSON, but some
-            // older servers may use 'text/json'.
-            // See: http://bit.ly/text-json
-            'content-type': 'application/json',
-            'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-        }
-    });
-    // here we asign the response data to a variable called oneforall
-    let oneForAll = resp.data.menuItemPrices
-    //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-    //the column names in a variable called columns then insert them in the table
-    for (let i = 0; i < oneForAll.length; i++) {
-        let data = "'" + resp.data.locRef + "',";
-        let columns = "locRef,";
-        for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//     res.json(resp.data)//viewing the data
+// });
+// //this endpoint is used to retrive all the tender media for specified location refrence
+// appRoutes.get('/TenderMedia', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     // for (let i = 0; i < 8; i++) {
+//     //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
+//     //the data from the API
+//     const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTenderMediaDimensions', { "locRef": "CHGOUNA" }, {
+//         headers: {
+//             // 'application/json' is the modern content-type for JSON, but some
+//             // older servers may use 'text/json'.
+//             // See: http://bit.ly/text-json
+//             'content-type': 'application/json',
+//             'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//         }
+//     });
+//     // here we asign the response data to a variable called oneforall
+//     let oneForAll = resp.data.tenderMedias
+//     //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//     //the column names in a variable called columns then insert them in the table
+//     for (let i = 0; i < oneForAll.length; i++) {
+//         let data = "'" + resp.data.locRef + "',";
+//         let columns = "locRef,";
+//         for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
 
-            if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                data += "0,"
-            }
-            else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-            }
-            else
-                data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            columns += Object.keys(oneForAll[i])[j] + ","
-        }
-        console.log(columns);
-        console.log(data);
-        //this query is used to insert the vales in thier columns
-        const media = await sql.query(`INSERT INTO MenuItemPrices (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-    }
-    // }
+//             if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                 data += "0,"
+//             }
+//             else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                 data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//             }
+//             else
+//                 data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             columns += Object.keys(oneForAll[i])[j] + ","
+//         }
+//         console.log(columns);
+//         console.log(data);
+//         //this query is used to insert the vales in thier columns
+//         const media = await sql.query(`INSERT INTO TenderMedia (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//     }
+//     // }
 
-    res.json(resp.data)//viewing the data
-});
-//this endpoint is used to retrive all the tender media for specified location refrence
-appRoutes.get('/TenderMedia', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    // for (let i = 0; i < 8; i++) {
-    //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
-    //the data from the API
-    const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTenderMediaDimensions', { "locRef": "CHGOUNA" }, {
-        headers: {
-            // 'application/json' is the modern content-type for JSON, but some
-            // older servers may use 'text/json'.
-            // See: http://bit.ly/text-json
-            'content-type': 'application/json',
-            'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-        }
-    });
-    // here we asign the response data to a variable called oneforall
-    let oneForAll = resp.data.tenderMedias
-    //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-    //the column names in a variable called columns then insert them in the table
-    for (let i = 0; i < oneForAll.length; i++) {
-        let data = "'" + resp.data.locRef + "',";
-        let columns = "locRef,";
-        for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//     res.json(resp.data.tenderMedias)//viewing the data
+// })
+// //this endpoint is used to retrive all the menu item for  specified location refrence
+// appRoutes.get('/MenuItem', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
+//     //the data from the API
+//     const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemDimensions', { "locRef": "CHGOUNA" }, {
+//         headers: {
+//             // 'application/json' is the modern content-type for JSON, but some
+//             // older servers may use 'text/json'.
+//             // See: http://bit.ly/text-json
+//             'content-type': 'application/json',
+//             'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//         }
+//     });
+//     // here we asign the response data to a variable called oneforall
+//     let oneForAll = resp.data.menuItems
+//     for (let i = 0; i < oneForAll.length; i++) {
+//         let data = "'" + resp.data.locRef + "',";
+//         let columns = "locRef,";
+//         for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
 
-            if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                data += "0,"
-            }
-            else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-            }
-            else
-                data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            columns += Object.keys(oneForAll[i])[j] + ","
-        }
-        console.log(columns);
-        console.log(data);
-        //this query is used to insert the vales in thier columns
-        const media = await sql.query(`INSERT INTO TenderMedia (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-    }
-    // }
+//             if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                 data += "0,"
+//             }
+//             else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                 data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//             }
+//             else
+//                 data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             columns += Object.keys(oneForAll[i])[j] + ","
+//         }
+//         console.log(columns);
+//         console.log(data);
+//         //this query is used to insert the vales in thier columns
+//         const media = await sql.query(`INSERT INTO MenuItems (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//     }
 
-    res.json(resp.data.tenderMedias)//viewing the data
-})
-//this endpoint is used to retrive all the menu item for  specified location refrence
-appRoutes.get('/MenuItem', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
-    //the data from the API
-    const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemDimensions', { "locRef": "CHGOUNA" }, {
-        headers: {
-            // 'application/json' is the modern content-type for JSON, but some
-            // older servers may use 'text/json'.
-            // See: http://bit.ly/text-json
-            'content-type': 'application/json',
-            'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-        }
-    });
-    // here we asign the response data to a variable called oneforall
-    let oneForAll = resp.data.menuItems
-    for (let i = 0; i < oneForAll.length; i++) {
-        let data = "'" + resp.data.locRef + "',";
-        let columns = "locRef,";
-        for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//     res.json(oneForAll)//viewing the data
+// });
+// //this endpoint is used to retrive all the TaxDailyTotal for  specified location refrence and bussiness date
+// appRoutes.get('/TaxDailyTotal', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         //initialize array called oneForAll
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.revenueCenters.length; i++) {
+//             //this loops iterates over all  keys in each row
+//             for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
+//                 ////this loops to get location refrence ,business date,Revenue Center  first 
+//                 for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
+//                     let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
+//                     obj["locRef"] = resp.data.locRef //save the location refrence  with the object
+//                     obj["busDt"] = resp.data.busDt //save the business date  with the object
+//                     obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
+//                     //this loops iterates over all the datial lines in each row
+//                     for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
+//                         //  console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
+//                         obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
+//                     }
+//                     oneForAll.push(obj)//then push the reulted object in the oneForAll array
+//                 }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let columns = ""
+//             let data = ""
+//             // this loop iterates over all the rows keys in the variable oneforall
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 columns += Object.keys(oneForAll[i])[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 //if condation to check if the rows value of keyes is null the value will be 0
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 //else if type of the rows value of keye is number we dont need to change the value before insert it to database 
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 //else if type of the rows value of keye is string  we  need to change the value as it should be inside single quotations
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             }
+//             //console.log(columns);
+//             //console.log(data);
 
-            if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                data += "0,"
-            }
-            else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-            }
-            else
-                data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            columns += Object.keys(oneForAll[i])[j] + ","
-        }
-        console.log(columns);
-        console.log(data);
-        //this query is used to insert the vales in thier columns
-        const media = await sql.query(`INSERT INTO MenuItems (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-    }
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data 
+// });
+// //this endpoint is used to retrive all the tenderMediaDaily for  specified location refrence and bussiness date
+// appRoutes.get('/tenderMediaDaily', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         //initialize array called oneForAll
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.revenueCenters.length; i++) {
+//             //this loops iterates over all  keys in each row
+//             for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
+//                 //this loops to get value of location refrence ,business date,RevenueCenter first 
+//                 for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
+//                     let obj = {} //this empty object was created to get the sub objects from the detail lines in a single object
+//                     obj["locRef"] = resp.data.locRef
+//                     obj["busDt"] = resp.data.busDt
+//                     obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
+//                     //this loops iterates over all the datial lines in each row
+//                     for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
+//                         // console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
+//                         obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
+//                     }
+//                     oneForAll.push(obj)//then push the reulted object in the oneForAll array
+//                 }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let columns = ""
+//             let data = ""
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 columns += Object.keys(oneForAll[i])[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data
+// });
+// //this endpoint is used to retrive all the ServiceChargeDailyTotals for  specified location refrence and bussiness date
+// appRoutes.get('/ServiceChargeDailyTotals', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getServiceChargeDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         //initialize array called oneForAll
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.revenueCenters.length; i++) {
+//             //this loops iterates over all  keys in each row
+//             for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
+//                 //this loops to get value of location refrence ,business date,RevenueCenter first 
+//                 for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
+//                     let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
+//                     obj["locRef"] = resp.data.locRef //save the location refrence  with the object
+//                     obj["busDt"] = resp.data.busDt //save the business date  with the object
+//                     obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
+//                     //this loops iterates over all the datial lines in each row
+//                     for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
+//                         //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
+//                         obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
+//                     }
+//                     oneForAll.push(obj)//then push the reulted object in the oneForAll array
+//                 }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let columns = ""
+//             let data = ""
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 columns += Object.keys(oneForAll[i])[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO ServiceChargeDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data 
+// });
+// //this endpoint is used to retrive all the DiscountDailyTotals for  specified location refrence and bussiness date
+// appRoutes.get('/DiscountDailyTotals', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getDiscountDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         //initialize array called oneForAll
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.revenueCenters.length; i++) {
+//             //this loops iterates over all  keys in each row
+//             for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
+//                 //this loops to get value of location refrence ,business date,RevenueCenter first 
+//                 for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
+//                     let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
+//                     obj["locRef"] = resp.data.locRef //save the location refrence  with the object
+//                     obj["busDt"] = resp.data.busDt //save the business date  with the object
+//                     obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
+//                     //this loops iterates over all the datial lines in each row
+//                     for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
+//                         //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
+//                         obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
+//                     }
+//                     oneForAll.push(obj)//then push the reulted object in the oneForAll array
+//                 }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let columns = ""
+//             let data = ""
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 columns += Object.keys(oneForAll[i])[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO DiscountDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(resp.data)//viewing the data 
+// });
+// //this endpoint is used to retrive all the RevenueCenter for  specified location refrence 
+// appRoutes.get('/RevenueCenter', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
+//     //the data from the API
+//     const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getRevenueCenterDimensions', { "locRef": "CHGOUNA" }, {
+//         headers: {
+//             // 'application/json' is the modern content-type for JSON, but some
+//             // older servers may use 'text/json'.
+//             // See: http://bit.ly/text-json
+//             'content-type': 'application/json',
+//             'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//         }
+//     });
+//     // here we asign the response data to a variable called oneforall
+//     let oneForAll = resp.data.revenueCenters
+//     //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//     //the column names in a variable called columns then insert them in the table
+//     for (let i = 0; i < oneForAll.length; i++) {
+//         let data = "'" + resp.data.locRef + "',";
+//         let columns = "locRef,";
+//         for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
 
-    res.json(oneForAll)//viewing the data
-});
-//this endpoint is used to retrive all the TaxDailyTotal for  specified location refrence and bussiness date
-appRoutes.get('/TaxDailyTotal', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        //initialize array called oneForAll
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            //this loops iterates over all  keys in each row
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                ////this loops to get location refrence ,business date,Revenue Center  first 
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
-                    obj["locRef"] = resp.data.locRef //save the location refrence  with the object
-                    obj["busDt"] = resp.data.busDt //save the business date  with the object
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
-                    //this loops iterates over all the datial lines in each row
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        //  console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)//then push the reulted object in the oneForAll array
-                }
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            // this loop iterates over all the rows keys in the variable oneforall
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                //if condation to check if the rows value of keyes is null the value will be 0
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                //else if type of the rows value of keye is number we dont need to change the value before insert it to database 
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                //else if type of the rows value of keye is string  we  need to change the value as it should be inside single quotations
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            //console.log(columns);
-            //console.log(data);
+//             if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                 data += "0,"
+//             }
+//             else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                 data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//             }
+//             else
+//                 data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             columns += Object.keys(oneForAll[i])[j] + ","
+//         }
+//         console.log(columns);
+//         console.log(data);
+//         //this query is used to insert the vales in thier columns
+//         const media = await sql.query(`INSERT INTO RevenuCenter (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
 
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data 
-});
-//this endpoint is used to retrive all the tenderMediaDaily for  specified location refrence and bussiness date
-appRoutes.get('/tenderMediaDaily', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        //initialize array called oneForAll
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            //this loops iterates over all  keys in each row
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                //this loops to get value of location refrence ,business date,RevenueCenter first 
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {} //this empty object was created to get the sub objects from the detail lines in a single object
-                    obj["locRef"] = resp.data.locRef
-                    obj["busDt"] = resp.data.busDt
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum
-                    //this loops iterates over all the datial lines in each row
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        // console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)//then push the reulted object in the oneForAll array
-                }
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO TaxDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data
-});
-//this endpoint is used to retrive all the ServiceChargeDailyTotals for  specified location refrence and bussiness date
-appRoutes.get('/ServiceChargeDailyTotals', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getServiceChargeDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        //initialize array called oneForAll
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            //this loops iterates over all  keys in each row
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                //this loops to get value of location refrence ,business date,RevenueCenter first 
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
-                    obj["locRef"] = resp.data.locRef //save the location refrence  with the object
-                    obj["busDt"] = resp.data.busDt //save the business date  with the object
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
-                    //this loops iterates over all the datial lines in each row
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)//then push the reulted object in the oneForAll array
-                }
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO ServiceChargeDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data 
-});
-//this endpoint is used to retrive all the DiscountDailyTotals for  specified location refrence and bussiness date
-appRoutes.get('/DiscountDailyTotals', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getDiscountDailyTotals', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        //initialize array called oneForAll
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            //this loops iterates over all  keys in each row
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                //this loops to get value of location refrence ,business date,RevenueCenter first 
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
-                    obj["locRef"] = resp.data.locRef //save the location refrence  with the object
-                    obj["busDt"] = resp.data.busDt //save the business date  with the object
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
-                    //this loops iterates over all the datial lines in each row
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)//then push the reulted object in the oneForAll array
-                }
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO DiscountDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(resp.data)//viewing the data 
-});
-//this endpoint is used to retrive all the RevenueCenter for  specified location refrence 
-appRoutes.get('/RevenueCenter', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //request is sent with a body includes location refrence and a header containing the authorization token to retrive 
-    //the data from the API
-    const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getRevenueCenterDimensions', { "locRef": "CHGOUNA" }, {
-        headers: {
-            // 'application/json' is the modern content-type for JSON, but some
-            // older servers may use 'text/json'.
-            // See: http://bit.ly/text-json
-            'content-type': 'application/json',
-            'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-        }
-    });
-    // here we asign the response data to a variable called oneforall
-    let oneForAll = resp.data.revenueCenters
-    //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-    //the column names in a variable called columns then insert them in the table
-    for (let i = 0; i < oneForAll.length; i++) {
-        let data = "'" + resp.data.locRef + "',";
-        let columns = "locRef,";
-        for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//     }
+//     res.json(oneForAll)//viewing the data 
+// });
+// //this endpoint is used to retrive all the getTaxs for  specified location refrence 
+// appRoutes.get('/getTaxs', async (req, res) => {
+//     //this endpoint is used to retrive all the guest checks for s specified location refrence and bussiness date
+//     await sql.connect(config)
+//     //request is sent with a body includes location refrence  and a header containing the authorization token to retrive 
+//     //the data from the API
+//     const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDimensions', { "locRef": "CHGOUNA" }, {
+//         headers: {
+//             // 'application/json' is the modern content-type for JSON, but some
+//             // older servers may use 'text/json'.
+//             // See: http://bit.ly/text-json
+//             'content-type': 'application/json',
+//             'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//         }
+//     });
+//     // here we asign the response data to a variable called oneforall
+//     let oneForAll = resp.data.taxes
+//     //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//     //the column names in a variable called columns then insert them in the table
+//     for (let i = 0; i < oneForAll.length; i++) {
+//         let data = "'" + resp.data.locRef + "',";
+//         let columns = "locRef,";
+//         for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
 
-            if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                data += "0,"
-            }
-            else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-            }
-            else
-                data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            columns += Object.keys(oneForAll[i])[j] + ","
-        }
-        console.log(columns);
-        console.log(data);
-        //this query is used to insert the vales in thier columns
-        const media = await sql.query(`INSERT INTO RevenuCenter (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//             if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                 data += "0,"
+//             }
+//             else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                 data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//             }
+//             else
+//                 data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             columns += Object.keys(oneForAll[i])[j] + ","
+//         }
+//         console.log(columns);
+//         console.log(data);
+//         //this query is used to insert the vales in thier columns
+//         const media = await sql.query(`INSERT INTO Taxes (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//     }
 
-    }
-    res.json(oneForAll)//viewing the data 
-});
-//this endpoint is used to retrive all the getTaxs for  specified location refrence 
-appRoutes.get('/getTaxs', async (req, res) => {
-    //this endpoint is used to retrive all the guest checks for s specified location refrence and bussiness date
-    await sql.connect(config)
-    //request is sent with a body includes location refrence  and a header containing the authorization token to retrive 
-    //the data from the API
-    const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getTaxDimensions', { "locRef": "CHGOUNA" }, {
-        headers: {
-            // 'application/json' is the modern content-type for JSON, but some
-            // older servers may use 'text/json'.
-            // See: http://bit.ly/text-json
-            'content-type': 'application/json',
-            'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-        }
-    });
-    // here we asign the response data to a variable called oneforall
-    let oneForAll = resp.data.taxes
-    //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-    //the column names in a variable called columns then insert them in the table
-    for (let i = 0; i < oneForAll.length; i++) {
-        let data = "'" + resp.data.locRef + "',";
-        let columns = "locRef,";
-        for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-
-            if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                data += "0,"
-            }
-            else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-            }
-            else
-                data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            columns += Object.keys(oneForAll[i])[j] + ","
-        }
-        console.log(columns);
-        console.log(data);
-        //this query is used to insert the vales in thier columns
-        const media = await sql.query(`INSERT INTO Taxes (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-    }
-
-    res.json(oneForAll)//viewing the data 
-});
-//this endpoint is used to retrive all the getLocationDimensions for  specified location refrence and bussiness date
-appRoutes.get('/getLocationDimensions', async (req, res) => {
-    //used to establish connection between database and the middleware
-    await sql.connect(config)
-    //this loop itrates for more 8 days from the date that was sent in the equest
-    for (let i = 0; i < 8; i++) {
-        //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
-        //the data from the API
-        const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getLocationDimensions', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/json',
-                'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
-            }
-        });
-        //initialize array called oneForAll
-        let oneForAll = []
-        //this loops iterates over all the rows retrived from the API
-        for (let i = 0; i < resp.data.revenueCenters.length; i++) {
-            //this loops iterates over all  keys in each row
-            for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
-                //this loops to get value of location refrence ,business date,RevenueCenter first 
-                for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
-                    let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
-                    obj["locRef"] = resp.data.locRef //save the location refrence  with the object
-                    obj["busDt"] = resp.data.busDt //save the business date  with the object
-                    obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
-                    //this loops iterates over all the datial lines in each row
-                    for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
-                        //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
-                        obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
-                    }
-                    oneForAll.push(obj)//then push the reulted object in the oneForAll array
-                }
-            }
-        }
-        //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
-        //the column names in a variable called columns then insert them in the table
-        for (let i = 0; i < oneForAll.length; i++) {
-            let columns = ""
-            let data = ""
-            for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                columns += Object.keys(oneForAll[i])[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                    data += "0,"
-                }
-                else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                    data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                }
-                else
-                    data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
-            }
-            console.log(columns);
-            console.log(data);
-            //this query is used to insert the vales in thier columns
-            const addCase = await sql.query(`INSERT INTO ServiceChargeDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-        }
-    }
-    res.json(oneForAll)//viewing the data 
-});
-//use module.exports to give access to any part of this app to access this route data 
+//     res.json(oneForAll)//viewing the data 
+// });
+// //this endpoint is used to retrive all the getLocationDimensions for  specified location refrence and bussiness date
+// appRoutes.get('/getLocationDimensions', async (req, res) => {
+//     //used to establish connection between database and the middleware
+//     await sql.connect(config)
+//     //this loop itrates for more 8 days from the date that was sent in the equest
+//     for (let i = 0; i < 8; i++) {
+//         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
+//         //the data from the API
+//         const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getLocationDimensions', { "locRef": "CHGOUNA", "busDt": date.addDays(new Date("2022-01-30"), i).toISOString().split("T")[0] }, {
+//             headers: {
+//                 // 'application/json' is the modern content-type for JSON, but some
+//                 // older servers may use 'text/json'.
+//                 // See: http://bit.ly/text-json
+//                 'content-type': 'application/json',
+//                 'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+//             }
+//         });
+//         //initialize array called oneForAll
+//         let oneForAll = []
+//         //this loops iterates over all the rows retrived from the API
+//         for (let i = 0; i < resp.data.revenueCenters.length; i++) {
+//             //this loops iterates over all  keys in each row
+//             for (let j = 0; j < Object.keys(resp.data.revenueCenters[i]).length; j++) {
+//                 //this loops to get value of location refrence ,business date,RevenueCenter first 
+//                 for (let k = 0; k < resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]].length; k++) {
+//                     let obj = {}//this empty object was created to get the sub objects from the detail lines in a single object
+//                     obj["locRef"] = resp.data.locRef //save the location refrence  with the object
+//                     obj["busDt"] = resp.data.busDt //save the business date  with the object
+//                     obj["rvcNum"] = resp.data.revenueCenters[i].rvcNum //save the RevenueCenter with the object
+//                     //this loops iterates over all the datial lines in each row
+//                     for (let f = 0; f < Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k]).length; f++) {
+//                         //console.log(Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]);
+//                         obj[Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]] = resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k][Object.keys(resp.data.revenueCenters[i][Object.keys(resp.data.revenueCenters[i])[j]][k])[f]]
+//                     }
+//                     oneForAll.push(obj)//then push the reulted object in the oneForAll array
+//                 }
+//             }
+//         }
+//         //this loop iterates over all the rows in the variable oneforall and concatinate all the values in a variable called data and all 
+//         //the column names in a variable called columns then insert them in the table
+//         for (let i = 0; i < oneForAll.length; i++) {
+//             let columns = ""
+//             let data = ""
+//             for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+//                 columns += Object.keys(oneForAll[i])[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+//                     data += "0,"
+//                 }
+//                 else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+//                     data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+//                 }
+//                 else
+//                     data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+//             }
+//             console.log(columns);
+//             console.log(data);
+//             //this query is used to insert the vales in thier columns
+//             const addCase = await sql.query(`INSERT INTO ServiceChargeDailyTotals (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+//         }
+//     }
+//     res.json(oneForAll)//viewing the data 
+// });
+// //use module.exports to give access to any part of this app to access this route data 
+}
 module.exports = appRoutes;
