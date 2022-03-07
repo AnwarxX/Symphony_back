@@ -22,19 +22,19 @@ const qs = require("qs")
 var status=[];
  let scJop=[]
 
-// const job = schedule.scheduleJob('* * * * * *', async function () {
-//     status = [];
-//     let dt = new Date();
-//     dt.setHours(dt.getHours() + 2);
-//     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-//     console.log(new Date());
-//     //await guestChecks(dat, 10, 1);
-//     //await allForOne(dat, 10, 1, 'getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": dat })
-//     //await guestChecksDetails(dat, 10, 1);
-//     //await TaxDailyTotal(dat, 10, 1)
-//     //await ServiceChargeDailyTotals(dat, 10, 1)
-//     //await DiscountDailyTotals(dat, 10, 1)
-// });
+const job = schedule.scheduleJob('0 0 0 * * *', async function () {
+    status = [];
+    let dt = new Date();
+    dt.setHours(dt.getHours() + 2);
+    let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+    console.log(new Date());
+    //await guestChecks(dat, 10, 1);
+    //await allForOne(dat, 10, 1, 'getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": dat })
+    //await guestChecksDetails(dat, 10, 1);
+    //await TaxDailyTotal(dat, 10, 1)
+    //await ServiceChargeDailyTotals(dat, 10, 1)
+    //await DiscountDailyTotals(dat, 10, 1)
+});
 // for (let i = 1; i < 6; i++) {
 //     scJop[i] = schedule.scheduleJob('*/'+i+' * * * * *', async function () {
 //         console.log(i,new Date());
@@ -566,6 +566,15 @@ appRoutes.post('/delete', async (req, res) => {
     const values = await sql.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
     res.json(req.body)//viewing the data which is array of obecjts which is json 
 });
+appRoutes.get("/importInterface",async(req,res)=>{
+
+    await sql.connect(config)
+
+    const interfaseCode = await sql.query(`SELECT [BU],[interfaceCode] ,[MappingCode] FROM [SimphonyApi].[dbo].[PropertySettings]`);//retrive all interface code
+
+   res.json(interfaseCode.recordset)
+
+})
 //this endpoint used to retrive all the tables name and their columns
 appRoutes.get('/SysData', async (req, res) => {
     //used to establish connection between database and the middleware
