@@ -287,11 +287,11 @@ function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(
 appRoutes.post("/import", async (req, res) => {
     // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
-    token='eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc1MTA0OTgsImlhdCI6MTY0NjMwMDg5OCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Q2rDGARbsRauv1WgOUjluIBxjRy_fKoRu9YpyNzk8mhTucR2Hc-IkVZhBw3Wb1jVy5QNlviJsB3ckBr-kH4aAaD7eK85zmA1U283Q1AOEZMkumQIs2mysdCZ6T-ugnq8g4OalQk6JteXsfOJmyXB_Sxc4sJhMmK2rGe7BIyKszl8aGqX0qMQmyn6AGYI-uOuuLvL8KhQ562v84Woufbw4qg5yJZc3GrWD63ZwFbJ0HvDW7u0_IhhGPlyvxFdby0ZtoOA3y_wCiy0hMt4bvw0pD-i7r1mcRdO9pE2dyMnO2xl8auzSIACpmekF1XOm8MGQA_jWWbyIKmA9DyAcpu3d3U-vzsOAKbCbJFaYgzq9THBA06e3rRHSRo2ZsY-eDy2Li4s6HJtSZ78qrLlrNp4aFwcoQ9dNn7gLXI1aAPyEns1d3x0wzSFWhWRmz2kEc0rURHgo5AveWmh3vETnWn2uVNPaPGLt66HbYkvrNLbLlndQFY3rEk8pASMFVSVMEve'
-    const media = await sql.query(``);
+    token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
+    console.log(token.recordset[0].token);
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
-        allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token, res)
+        allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
     // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
@@ -375,7 +375,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                         WHERE ${check.slice(0, -4)})
                         BEGIN
                         INSERT INTO ${apiName} (${columns.slice(0, -1)})
-                        VALUES (${columns.slice(0, -1)})
+                        VALUES (${data.slice(0, -1)})
                         END`);
                 // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
@@ -679,12 +679,19 @@ appRoutes.post('/PropertySettings', async (req, res) => {
     await sql.connect(config)
     //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
     // const values = await sql.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+    console.log(
+        `IF NOT EXISTS (SELECT * FROM PropertySettings
+            WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+            BEGIN
+            INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+            VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+            END`);
     const values = await sql.query(
         `IF NOT EXISTS (SELECT * FROM PropertySettings
-            WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and ConnectionCode='${req.body.ConnectionCode}')
+            WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
             BEGIN
-            INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode)
-            VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')
+            INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+            VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
             END`)
     //used to close the connection between database and the middleware
     res.json(req.body)//viewing the data which is array of obecjts which is json
