@@ -20,7 +20,7 @@ const qs = require("qs")
 //     // await guestChecksDetails(dat);
 // });
 var status=[];
- let scJop=[]
+let scJop=[]
 
 const job = schedule.scheduleJob('0 0 0 * * *', async function () {
     status = [];
@@ -417,7 +417,6 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
     }
 }
 appRoutes.post("/authorization", async (req, res) => {
-    await sql.connect(config)
     console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
     let resp;
@@ -425,6 +424,10 @@ appRoutes.post("/authorization", async (req, res) => {
     let username=req.body.username
     let password=req.body.password
     let orgname=req.body.enterpriseShortName
+    let SunUser = req.body.SunUser
+    let SunPassword = req.body.SunPassword
+    let Sunserver = req.body.Sunserver
+    let SunDatabase = req.body.SunDatabase
     try {
         resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
             username, //gave the values directly for testing
@@ -455,6 +458,24 @@ appRoutes.post("/authorization", async (req, res) => {
                 'content-type': 'application/x-www-form-urlencoded'
             }
         , withCredentials: true });
+        const dbConfig = {
+            user: SunUser,
+            password: SunPassword,
+            server: Sunserver,
+            database: SunDatabase,
+            "options": {
+              "abortTransactionOnError": true,
+              "encrypt": false,
+              "enableArithAbort": true,
+              trustServerCertificate: true
+            },
+            charset: 'utf8'
+          };
+        await sql.connect(dbConfig)
+        
+        console.log(sql.connect(dbConfig),"kkk");
+        await  sql.close() 
+
         token=resp2.data.id_token
         let runtime;
         console.log(token);
@@ -529,6 +550,7 @@ appRoutes.post("/authorization", async (req, res) => {
                 data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
             }
         }
+        
         console.log(columns);
         console.log(data);
         console.log(check);
@@ -539,6 +561,8 @@ appRoutes.post("/authorization", async (req, res) => {
                 INSERT INTO interfaceDefinition (${columns}token,refreshToken)
                 VALUES (${data}'${token}','${refresh_token}')
                 END`);
+     await sql.connect(config)
+
         const addCase = await sql.query(
             `IF NOT EXISTS (SELECT * FROM interfaceDefinition
                 WHERE ${check.slice(0, -4)})
@@ -546,8 +570,10 @@ appRoutes.post("/authorization", async (req, res) => {
                 INSERT INTO interfaceDefinition (${columns}token,refreshToken)
                 VALUES (${data}'${token}','${refresh_token}')
                 END`);
+
+                
         //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
-        res.json("Submitted successfully");
+       // res.json("Submitted successfully");
     } catch (error) {
         if(error.message.includes(400))
             res.json("Invalid Client ID")
@@ -555,7 +581,7 @@ appRoutes.post("/authorization", async (req, res) => {
             res.json("Invalid username ,password or enterprise name")
         }
         else
-            console.log(error.message);
+            res.json(error.message);
     }
 })
 appRoutes.post('/delete', async (req, res) => {
