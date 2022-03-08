@@ -393,7 +393,7 @@ appRoutes.get('/interfaceCode', async (req, res) => {
     await sql.connect(config)
     const interfacedata = await sql.query(`SELECT interfaceCode From  interfaceDefinition `)
       //used to establish connection between database and the middleware
-      const apidata = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings'`)
+      const apidata = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`)
     res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
 
 });
@@ -700,7 +700,7 @@ appRoutes.get('/SysData', async (req, res) => {
     await sql.connect(config)
     let data = []//an empty array used to push all column names with it's table name
     
-    const tables = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings'`);//retrive all tables name
+    const tables = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`);//retrive all tables name
     console.log(tables);
     for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
         let x = {}//object that will hold each table name with it's columns
