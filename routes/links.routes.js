@@ -178,14 +178,14 @@ async function guestChecksDetails(dat, limit, start, token, res) {
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
     try {
-        for (let i = 0; i < 8; i++) {
+        // for (let i = 0; i < 8; i++) {
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": dat }, {
                 headers: {
                     // 'application/json' is the modern content-type for JSON, but some
                     // older servers may use 'text/json'.
                     // See: http://bit.ly/text-json
                     'content-type': 'application/json',
-                    'Authorization': 'Bearer eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwYzE3MzY3ZS1lMjUwLTRhYWUtOTJjZC1kMTU4ZTgyZGI0MGMiLCJhdWQiOiJWbEZETG1Nd01tTmhaRGMzTFRoaFlqVXROR016WXkxaFpHRTVMV1poT0dKaE56bGtPRGM1Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDYxMjcwMzAsImlhdCI6MTY0NDkxNzQzMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Ruvt3wxqpYn_qTJhX23_4f-nstXGScj6i9p8n5QPmv4fYFgTdPV2YFIht44KDKfTL0D61RPQih1Rso8e0JcnLoGprvddN0WpjBK-JpXWRwAjVg-zeYwDJx5Y3tn5LStrZj-uz3fxITMsLj7Ls8FqDV0VXkLIBu8IWK77KPkZE_9Daj8sLkCbJzwNZVoK-f5K4D1jPQLKMzpLP1l6Fmor1jAuUw2tGBJ2KcJrx1FTHhh8CHwN5pOGpiCVfa-_7EByOHauTygjVkPMHEFHvEvz7V6F85w0GxVAaeGzHM-z5P0FoPw0X7YrFioHhIttbcF1leg3GFFEkWXHssYDvJGlkVZ8PU9L5XBXpa8Y4K6AtE6Er94A4f-FaI7XMojEKY2QQu2cytppedJgufa6L0jfmNMheqBtdKlFw8HG7nvdzftuKHOmbVAOW_Og_gi4i32dKjNNurmkyz8CAlpgg19wlS5Sdt-a6DvefTwBNzDUjOJLIwaDTaPidXWiT9-0Ls7d'
+                    'Authorization': 'Bearer '+token
                 }
             });
             let oneForAll = []
@@ -239,19 +239,19 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                 console.log(data);
                 console.log(check);
                 const addCase = await sql.query(
-                    `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                    `IF NOT EXISTS (SELECT * FROM GuestChecksLineDetails
                         WHERE ${check.slice(0, -4)})
                         BEGIN
-                        INSERT INTO ImportStatus (${columns.slice(0, -1)})
+                        INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1)})
                         VALUES (${data.slice(0, -1)})
                         END`);
                 // const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
             }
-        }
-        status.push({API:"Guest Checks",date:dat,status:'success'})
+        // }
+        status.push({API:"guestChecksDetails",date:dat,status:'success'})
         if (res==undefined) {
             let status = await sql.query(
-                `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status)
@@ -259,7 +259,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                     END`)
         }
         else{
-            res.json({date:dat,stats:"Successfylly"})
+            res.json({api:"guestChecksDetails",date:dat,stats:"Successfylly"})
         }
     } catch (error) {
         start++;
@@ -269,7 +269,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                 guestChecksDetails(dat, limit, start, token, res);
             }, 3000);
         else {
-            status.push({api:apiName,date:dat,stats:'field'})
+            status.push({api:'guestChecksDetails',date:dat,stats:'field'})
             if (res==undefined)
                 await sql.query(
                     `IF NOT EXISTS (SELECT * FROM guestChecksDetails
@@ -279,7 +279,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                         VALUES ('guestChecksDetails','${dat}','Failed')
                         END`);
             else
-                res.json({api:apiName,date:dat,stats:'Field'})
+                res.json({api:'guestChecksDetails',date:dat,stats:'Faild'})
         }
     }
 }
@@ -291,7 +291,12 @@ appRoutes.post("/import", async (req, res) => {
     console.log(token.recordset[0].token);
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
-        allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
+        if (req.body.api=="getGuestChecks") {
+            guestChecks(req.body.date, 10, 1, token.recordset[0].token, res)
+            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token, res)
+        } else {
+            allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
+        }
     // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
