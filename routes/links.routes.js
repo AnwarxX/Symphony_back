@@ -303,6 +303,85 @@ appRoutes.post("/import", async (req, res) => {
   //  guestChecks("2022-02-23", 10, 1,res)
 //   res.json("done")
 })
+appRoutes.get("/importSun", async (req, res) => {
+    // let dates=getDaysArray("2022-02-20","2022-02-23")
+  try {
+    await sql.connect(config)
+    let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02'
+
+    ,isnull(T03.Target,'#') 'T03'
+  
+    ,isnull(T04.Target,'#') 'T04'
+  
+  ,isnull(T05.Target,'#') 'T05'
+  
+  ,isnull(T06.Target,'#') 'T06'
+  
+  ,isnull(T07.Target,'#') 'T07'
+  
+  ,isnull(T08.Target,'#') 'T08'
+  
+  ,isnull(T09.Target,'#') 'T09'
+  
+  ,isnull(T10.Target,'#') 'T10'
+  
+    from
+  
+  (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
+  
+  left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account'
+  
+   
+  
+  where Main.busDt = '2022-02-05'
+  
+  group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
+  
+  ) as Main
+  
+   
+  
+  left join Mapping as T01 on Main.Reference = T01.Source and Main.rvcNum = T01.RevenuCenter and T01.ALevel = 1
+  
+  left join Mapping as T02 on Main.Reference = T02.Source and Main.rvcNum = T02.RevenuCenter and T02.ALevel =  2 
+  
+  left join Mapping as T03 on Main.Reference = T03.Source and Main.rvcNum = T03.RevenuCenter and T03.ALevel =  3 
+  
+  left join Mapping as T04 on Main.Reference = T04.Source and Main.rvcNum = T04.RevenuCenter and T04.ALevel =  4 
+  
+  left join Mapping as T05 on Main.Reference = T05.Source and Main.rvcNum = T05.RevenuCenter and T05.ALevel =  5 
+  
+  left join Mapping as T06 on Main.Reference = T06.Source and Main.rvcNum = T06.RevenuCenter and T06.ALevel =  6 
+  
+  left join Mapping as T07 on Main.Reference = T07.Source and Main.rvcNum = T07.RevenuCenter and T07.ALevel =  7 
+  
+  left join Mapping as T08 on Main.Reference = T08.Source and Main.rvcNum = T08.RevenuCenter and T08.ALevel =  8 
+  
+  left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9 
+  
+  left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10`);
+  await  sql.close() 
+    const dbConfig ={
+        user: "sa",
+        password: "mynewP@ssw0rdsa",
+        server: "192.168.1.120",
+        database: "SunSystemsData",
+        "options": {
+          "abortTransactionOnError": true,
+          "encrypt": false,
+          "enableArithAbort": true,
+          trustServerCertificate: true
+        },
+        charset: 'utf8'
+      };
+    await sql.connect(dbConfig)
+    //await sql.query(``)
+    await  sql.close() 
+    res.json(data)
+} catch (error) {
+    res.json(error.message)
+}
+})
 appRoutes.get("/codes",async(req,res)=>{
     await sql.connect(config)
     const interfaseCode = await sql.query(`SELECT interfaceCode From  interfaceDefinition `);//retrive all interface code
@@ -588,6 +667,8 @@ appRoutes.post("/authorization", async (req, res) => {
         else
             res.json(error.message);
     }
+})
+appRoutes.get("/sunCon", async (req, res) => {
 })
 appRoutes.post('/delete', async (req, res) => {
     //used to establish connection between database and the middleware
