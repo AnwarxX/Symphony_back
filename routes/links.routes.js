@@ -597,6 +597,13 @@ appRoutes.post('/delete', async (req, res) => {
     const values = await sql.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
     res.json(req.body)//viewing the data which is array of obecjts which is json 
 });
+appRoutes.post('/deleteInterface', async (req, res) => {
+    //used to establish connection between database and the middleware
+    await sql.connect(config)
+    //query to delete PropertySettings data from Mapping table  in  database 
+    const values = await sql.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
+    res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
+});
 appRoutes.get("/importInterface",async(req,res)=>{
 
     await sql.connect(config)
