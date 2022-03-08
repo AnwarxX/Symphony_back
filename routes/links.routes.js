@@ -259,7 +259,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                     END`)
         }
         else{
-            res.json({api:"guestChecksDetails",date:dat,stats:"Successfylly"})
+            // res.json({api:"guestChecksDetails",date:dat,stats:"Successfylly"})
         }
     } catch (error) {
         start++;
@@ -278,13 +278,13 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                         INSERT INTO ImportStatus (ApiName,Date,Status)
                         VALUES ('guestChecksDetails','${dat}','Failed')
                         END`);
-            else
-                res.json({api:'guestChecksDetails',date:dat,stats:'Faild'})
+                // res.json({api:'guestChecksDetails',date:dat,stats:'Faild'})
         }
     }
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
 appRoutes.post("/import", async (req, res) => {
+    console.log(req.body.api);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
     token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
@@ -292,11 +292,17 @@ appRoutes.post("/import", async (req, res) => {
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
-            guestChecks(req.body.date, 10, 1, token.recordset[0].token, res)
             guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token, res)
-        } else {
-            allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
-        }
+            guestChecks(req.body.date, 10, 1, token.recordset[0].token, res)
+        } else{
+            if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
+                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
+
+            }
+            else{
+                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token, res)
+
+            }        }
     // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
@@ -482,6 +488,100 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
         if (start <= limit)
             setTimeout(function () {
                 allForOne(dat, limit, start, apiName, body, token, res);
+            }, 3000);
+        else {
+            console.log(dat,"field");
+            status.push({api:apiName,date:dat,stats:'field'})
+            if (res==undefined){
+                await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES (${apiName},'${dat}','Failed')
+                    END`);
+            }
+            else
+                res.json({api:apiName,date:dat,stats:'Failed'})
+        }
+    }
+}
+async function allForTwo(dat, limit, start, apiName, body, token, res) {
+    await sql.connect(config)
+    console.log(body);
+    try {
+            //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
+            //the data from the API
+            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer '+token
+                }
+            });
+                // here we asign the response data to a variable called oneforall
+            console.log(Object.keys(resp));
+            let oneForAll = resp.data[Object.keys(resp.data)[[Object.keys(resp.data).length-1]]]
+            for (let i = 0; i < oneForAll.length; i++) {
+                let columns = ""
+                let data = ""
+                let check=""
+                for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+                    columns += Object.keys(oneForAll[i])[j] + ','
+                    // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+                    if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+                        check+=Object.keys(oneForAll[i])[j]+"=0 and "
+                        data += "0,"
+                    }
+                    else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+                        check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
+                        data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+                    }
+                    else{
+                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]]+"'"+" and "
+                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+                    }
+                }
+                console.log(columns);
+                console.log(data);
+                console.log(check);
+                console.log(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE ${check.slice(0, -4)})
+                        BEGIN
+                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
+                        VALUES (${data.slice(0, -1)})
+                        END`);
+                const addCase = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE ${check.slice(0, -4)})
+                        BEGIN
+                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
+                        VALUES (${data.slice(0, -1)})
+                        END`);
+                // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+            }
+            status.push({api:apiName,date:dat,stats:'success'})
+            if (res==undefined) {
+                let status = await sql.query(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+                        BEGIN
+                        INSERT INTO ImportStatus (ApiName,Date,Status)
+                        VALUES ('${apiName}','${dat}','Successful')
+                        END`)
+            }
+            else
+                res.json({api:apiName,date:dat,stats:'Successfully'})
+    }
+    catch (error) {
+        start++;
+        console.log(error.message);
+        if (start <= limit)
+            setTimeout(function () {
+                allForTwo(dat, limit, start, apiName, body, token, res);
             }, 3000);
         else {
             console.log(dat,"field");
