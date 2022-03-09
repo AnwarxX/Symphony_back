@@ -317,10 +317,13 @@ appRoutes.post("/import", async (req, res) => {
   //  guestChecks("2022-02-23", 10, 1,res)
 //   res.json("done")
 })
-appRoutes.get("/importSun", async (req, res) => {
+appRoutes.post("/importSun", async (req, res) => {
+
     // let dates=getDaysArray("2022-02-20","2022-02-23")
   try {
+    console.log(req.body);
     await sql.connect(config)
+
     let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02'
 
     ,isnull(T03.Target,'#') 'T03'
@@ -347,7 +350,7 @@ appRoutes.get("/importSun", async (req, res) => {
   
    
   
-  where Main.busDt = '2022-02-05'
+  where Main.busDt = '${req.body.date}'
   
   group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
   
@@ -374,14 +377,15 @@ appRoutes.get("/importSun", async (req, res) => {
   left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9 
   
   left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10`);
-   const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='29' `);
-   const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where interfaceCode='29'`)
-  await  sql.close() 
-  console.log(sunCon,buD,data);
+  data = data.recordset 
+  const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
+   const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
+   await  sql.close() 
+   console.log(buD,sunCon);
   let pk1= buD.recordset[0].BU
   let  SuspenseAccount = buD.recordset[0].SuspenseAccount
   let JournalType =buD.recordset[0].JournalType
-console.log(pk1, SuspenseAccount,JournalType);
+  let Currencycode = buD.recordset[0].Currencycode
   const dbConfig ={
         user: sunCon.recordset[0].SunUser,
         password: sunCon.recordset[0].SunPassword,
@@ -396,7 +400,15 @@ console.log(pk1, SuspenseAccount,JournalType);
         charset: 'utf8'
       };
     await sql.connect(dbConfig)
-    await  sql.query(`insert into  ${pk1}_PSTG_HDR (UPDATE_COUNT,
+    // let HDR_I = await sql.query(`SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS'`)
+    // console.log(HDR_I);
+    //                    HDR_I = HDR_I.recordsets[0].PSTG_HDR_ID;
+    await  sql.query(`
+    
+    IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_HDR
+        WHERE  LAST_CHANGE_DATETIME = GETDATE() )
+        BEGIN
+    insert into  ${pk1}_PSTG_HDR (UPDATE_COUNT,
         LAST_CHANGE_USER_ID,
         LAST_CHANGE_DATETIME
         ,CREATED_BY,
@@ -470,18 +482,27 @@ console.log(pk1, SuspenseAccount,JournalType);
                        0,
                        0.000,
                        0.000,
-                       0
-                       
-                       )` );
+                       0 )
+                       END ` );
 
-   let HDR_ID = await sql.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS')`)
+let HDR_ID = await sql.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS')`)
                        HDR_ID = HDR_ID.recordset[0].PSTG_HDR_ID;
 console.log(HDR_ID);
-for (let i = 0; i < data.recordsets.length; i++) {
-    data.recordsets[i]
-    if(data.recordsets[i] ==''){
-        data.recordsets[i] = null
+for (let i = 0; i < data.length; i++) {
+    let ind =''
+    if(data[i] ==''){
+        data[i] = null
     }
+    if(data[i].Total < 0){
+        ind ='D'
+    }
+    if(data[i].Total >= 0){
+        ind ='C'
+    }
+    let TransactionDate= data[i].TransactionDate
+    TransactionDate = TransactionDate.toISOString().replace('T', ' ').replace('Z', ' ')
+    
+
     // let x=await sql.query(`EXEC sp_describe_first_result_set N'SELECT * FROM ${pk1}_PSTG_DETAIL'`);
     // for (let i = 0; i < x.recordset.length; i++) {
     //     console.log(x.recordset.system_type_name);
@@ -498,7 +519,11 @@ for (let i = 0; i < data.recordsets.length; i++) {
     //     }
     //   }
    // console.log(tempstr2);
-    await sql.query(`insert into  ${pk1}_PSTG_DETAIL (
+    await sql.query(` 
+    IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_DETAIL
+      WHERE  PSTG_HDR_ID=${HDR_ID} and LINE_NUM=${i+1})    
+      BEGIN
+    insert into  ${pk1}_PSTG_DETAIL (
         PSTG_HDR_ID
         ,LINE_NUM
         ,UPDATE_COUNT
@@ -646,13 +671,45 @@ for (let i = 0; i < data.recordsets.length; i++) {
         ,ALLOC_ID
         ,JNL_REVERSAL_TYPE
      ) 
-     values(${HDR_ID},${i},0 , '', GETDATE() , '' ,0, GETDATE() ,0 ,0 , '' , '' , '' , '' ,0 , '' , '' ,0 ,0 , '' ,0 , '' , '' ,0 , '' ,0 ,0 ,0 ,0, GETDATE() ,0 ,0, GETDATE() ,0, GETDATE(), GETDATE() ,0 , '' , '' , '' ,0 ,0 ,0 ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '', GETDATE(), GETDATE(), GETDATE(), GETDATE() , '' ,0 , '' ,0 , '' ,0 , '' ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0 , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0 ,0 , '' , '' , '' ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0, GETDATE() , '', GETDATE() , '' ,0 , '' , '' ,0, GETDATE() , '' ,0 ,0 ,0 ,0 ,0 , '' ,0 ,0 , '' , '', GETDATE() , '' , '' ,0)`)  
-}
+     values(${HDR_ID},
+        ${i+1},
+        0 ,
+        '',
+        GETDATE() ,
+        '${data[i].Account}' ,
+        ${data[i].Period},
+        '${TransactionDate }',
+        0 ,
+        ${i+1} ,
+        '${JournalType}' ,
+        '' , 
+        '${data[i].Reference}' ,
+        '' ,
+        ${data[i].Total} , 
+        '${ind}' ,
+         '${Currencycode}' ,
+         0 ,
+         ${data[i].Total} , 
+         '' ,
+         0 ,
+          '' ,
+           '' ,
+           0 ,
+            '' ,
+            0 ,
+            0 ,
+            0 ,
+            0,
+             GETDATE() ,
+             0 ,
+        0, 
+            GETDATE() ,0, GETDATE(), GETDATE() ,0 , '' , '' , '' ,0 ,0 ,0 ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '', GETDATE(), GETDATE(), GETDATE(), GETDATE() , '' ,0 , '' ,0 , '' ,0 , '' ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0 , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0 ,0 , '' , '' , '' ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0, GETDATE() , '', GETDATE() , '' ,0 , '' , '' ,0, GETDATE() , '' ,0 ,0 ,0 ,0 ,0 , '' ,0 ,0 , '' , '', GETDATE() , '' , '' ,0)END`)  
+ }
 
                        
     //await sql.query(``)
     await  sql.close() 
-    res.json(data)
+    res.json("successfully")
 } catch (error) {
     res.json(error.message)
 }
@@ -1054,6 +1111,7 @@ appRoutes.post('/deleteInterface', async (req, res) => {
     await sql.connect(config)
     //query to delete PropertySettings data from Mapping table  in  database 
     const values = await sql.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
+    await sql.query(`delete from interfaceDefinition where interfaceCode='${req.body.interfaceCode}'`);
     res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
 });
 appRoutes.get("/importInterface",async(req,res)=>{
