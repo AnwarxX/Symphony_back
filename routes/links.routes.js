@@ -323,69 +323,47 @@ appRoutes.post("/importSun", async (req, res) => {
   try {
     console.log(req.body);
     await sql.connect(config)
+    const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
+   const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
+   let MappingCode =buD.recordset[0].MappingCode
+   let pk1= buD.recordset[0].BU
+   let  SuspenseAccount = buD.recordset[0].SuspenseAccount
+   let JournalType =buD.recordset[0].JournalType
+   let Currencycode = buD.recordset[0].Currencycode
+   let LedgerImportDescription =buD.recordset[0].LedgerImportDescription
 
-    let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02'
+   let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
+  ,isnull(T03.Target,'#') 'T03'
+  ,isnull(T04.Target,'#') 'T04'
+ ,isnull(T05.Target,'#') 'T05'
+ ,isnull(T06.Target,'#') 'T06'
+ ,isnull(T07.Target,'#') 'T07'
+ ,isnull(T08.Target,'#') 'T08'
+ ,isnull(T09.Target,'#') 'T09'
+ ,isnull(T10.Target,'#') 'T10'
+ 
+  from 
+(select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
+left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingType = '${MappingCode}'
 
-    ,isnull(T03.Target,'#') 'T03'
-  
-    ,isnull(T04.Target,'#') 'T04'
-  
-  ,isnull(T05.Target,'#') 'T05'
-  
-  ,isnull(T06.Target,'#') 'T06'
-  
-  ,isnull(T07.Target,'#') 'T07'
-  
-  ,isnull(T08.Target,'#') 'T08'
-  
-  ,isnull(T09.Target,'#') 'T09'
-  
-  ,isnull(T10.Target,'#') 'T10'
-  
-    from
-  
-  (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
-  
-  left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account'
-  
-   
-  
-  where Main.busDt = '${req.body.date}'
-  
-  group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
-  
-  ) as Main
-  
-   
-  
-  left join Mapping as T01 on Main.Reference = T01.Source and Main.rvcNum = T01.RevenuCenter and T01.ALevel = 1
-  
-  left join Mapping as T02 on Main.Reference = T02.Source and Main.rvcNum = T02.RevenuCenter and T02.ALevel =  2 
-  
-  left join Mapping as T03 on Main.Reference = T03.Source and Main.rvcNum = T03.RevenuCenter and T03.ALevel =  3 
-  
-  left join Mapping as T04 on Main.Reference = T04.Source and Main.rvcNum = T04.RevenuCenter and T04.ALevel =  4 
-  
-  left join Mapping as T05 on Main.Reference = T05.Source and Main.rvcNum = T05.RevenuCenter and T05.ALevel =  5 
-  
-  left join Mapping as T06 on Main.Reference = T06.Source and Main.rvcNum = T06.RevenuCenter and T06.ALevel =  6 
-  
-  left join Mapping as T07 on Main.Reference = T07.Source and Main.rvcNum = T07.RevenuCenter and T07.ALevel =  7 
-  
-  left join Mapping as T08 on Main.Reference = T08.Source and Main.rvcNum = T08.RevenuCenter and T08.ALevel =  8 
-  
-  left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9 
-  
-  left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10`);
-  data = data.recordset 
-  const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
-   const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
-   await  sql.close() 
-   console.log(buD,sunCon);
-  let pk1= buD.recordset[0].BU
-  let  SuspenseAccount = buD.recordset[0].SuspenseAccount
-  let JournalType =buD.recordset[0].JournalType
-  let Currencycode = buD.recordset[0].Currencycode
+where Main.busDt = '2022-02-05'
+group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
+) as Main
+
+left join Mapping as T01 on Main.Reference = T01.Source and Main.rvcNum = T01.RevenuCenter and T01.ALevel = 1 and T01.MappingType = '${MappingCode}'
+left join Mapping as T02 on Main.Reference = T02.Source and Main.rvcNum = T02.RevenuCenter and T02.ALevel =  2  and T02.MappingType = '${MappingCode}'
+left join Mapping as T03 on Main.Reference = T03.Source and Main.rvcNum = T03.RevenuCenter and T03.ALevel =  3  and T03.MappingType = '${MappingCode}'
+left join Mapping as T04 on Main.Reference = T04.Source and Main.rvcNum = T04.RevenuCenter and T04.ALevel =  4  and T04.MappingType = '${MappingCode}'
+left join Mapping as T05 on Main.Reference = T05.Source and Main.rvcNum = T05.RevenuCenter and T05.ALevel =  5  and T05.MappingType = '${MappingCode}'
+left join Mapping as T06 on Main.Reference = T06.Source and Main.rvcNum = T06.RevenuCenter and T06.ALevel =  6  and T06.MappingType = '${MappingCode}'
+left join Mapping as T07 on Main.Reference = T07.Source and Main.rvcNum = T07.RevenuCenter and T07.ALevel =  7  and T07.MappingType = '${MappingCode}'
+left join Mapping as T08 on Main.Reference = T08.Source and Main.rvcNum = T08.RevenuCenter and T08.ALevel =  8  and T08.MappingType = '${MappingCode}'
+left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9  and T09.MappingType = '${MappingCode}'
+left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10  and T10.MappingType = '${MappingCode}'`);
+ data = data.recordset 
+ console.log(data,LedgerImportDescription,MappingCode);
+ await  sql.close() 
+
   const dbConfig ={
         user: sunCon.recordset[0].SunUser,
         password: sunCon.recordset[0].SunPassword,
@@ -452,7 +430,7 @@ appRoutes.post("/importSun", async (req, res) => {
                        'OFS', 
                        CAST('12/2/2021' as date),
                        'LI',
-                       'HRMS',
+                       '${LedgerImportDescription}',
                        0,
                        2,
                        1,
@@ -703,7 +681,20 @@ for (let i = 0; i < data.length; i++) {
              GETDATE() ,
              0 ,
         0, 
-            GETDATE() ,0, GETDATE(), GETDATE() ,0 , '' , '' , '' ,0 ,0 ,0 ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '', GETDATE(), GETDATE(), GETDATE(), GETDATE() , '' ,0 , '' ,0 , '' ,0 , '' ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0 , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0 ,0 , '' , '' , '' ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0, GETDATE() , '', GETDATE() , '' ,0 , '' , '' ,0, GETDATE() , '' ,0 ,0 ,0 ,0 ,0 , '' ,0 ,0 , '' , '', GETDATE() , '' , '' ,0)END`)  
+            GETDATE() ,
+            0,
+             GETDATE(),
+              GETDATE() ,
+              0 ,
+               '' ,
+                '' , 
+                '' ,
+                0 ,
+                0 ,
+                0 ,
+                0 ,
+                0 ,
+                 '${data[i].T01}' , '${data[i].T02}' , '${data[i].T03}' , '${data[i].T04}' , '${data[i].T05}' , '${data[i].T06}' , '${data[i].T07}' , '${data[i].T08}' , '${data[i].T09}' , '${data[i].T10}' ,0 , '', GETDATE(), GETDATE(), GETDATE(), GETDATE() , '' ,0 , '' ,0 , '' ,0 , '' ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0 , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0 ,0 , '' , '' , '' ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0, GETDATE() , '', GETDATE() , '' ,0 , '' , '' ,0, GETDATE() , '' ,0 ,0 ,0 ,0 ,0 , '' ,0 ,0 , '' , '', GETDATE() , '' , '' ,0)END`)  
  }
 
                        
