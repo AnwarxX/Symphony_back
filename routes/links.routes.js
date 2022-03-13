@@ -37,4 +37,6 @@ appRoutes.get('/mapping', apiController.getMapping);
 appRoutes.post('/mapping', apiController.postMapping);
 //this endpoint used to send  Property data(BU,JournalType,Revenue,level,Currencycode) from frontend and insert it in  database 
 appRoutes.post('/PropertySettings', apiController.PropertySettings);
+appRoutes.post('/reviewInterface', apiController.reviewInterface);
+
 module.exports = appRoutes;

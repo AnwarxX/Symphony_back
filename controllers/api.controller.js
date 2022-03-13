@@ -9,7 +9,8 @@ const config = require('../configuration/config')//call for using configuration 
 const schedule = require('node-schedule');
 const date = require('date-and-time');//call for using date-and-time module 
 const { response } = require('express');
-const qs = require("qs")
+const qs = require("qs");
+const { json } = require('body-parser');
 var status=[];
 let scJop=[]
 
@@ -652,6 +653,13 @@ module.exports.deleteInterface = async (req, res) => {
     const values = await sql.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
     await sql.query(`delete from interfaceDefinition where interfaceCode='${req.body.interfaceCode}'`);
     res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
+}
+module.exports.reviewInterface = async (req, res) => {
+    //used to establish connection between database and the middleware
+    await sql.connect(config)
+    //query to review PropertySettings data from Mapping table  in  database 
+    const values = await sql.query(`select * from interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+    res.json(values.recordset[0]);
 }
 module.exports.importInterface = async (req, res) => {
     await sql.connect(config)
