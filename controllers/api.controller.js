@@ -324,6 +324,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
+            if (apiName=="getLocationDimensions") {
+                body={}
+            }
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
                 headers: {
                     // 'application/json' is the modern content-type for JSON, but some
@@ -341,6 +344,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                 let data = ""
                 let check=""
                 for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+                    delete oneForAll[i]["workstations"]
                     columns += Object.keys(oneForAll[i])[j] + ','
                     // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
                     if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
@@ -352,8 +356,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                         data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
                     }
                     else{
-                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]]+"'"+" and "
-                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
+                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("")+"'"+" and "
+                        console.log(oneForAll[i][Object.keys(oneForAll[i])[j]],typeof(oneForAll[i][Object.keys(oneForAll[i])[j]]));
+                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("") + "'" + ","
                     }
                 }
                 console.log(columns);
@@ -430,7 +435,7 @@ module.exports.import = async (req, res) => {
     // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
     token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
-    console.log(token.recordset[0].token);
+    console.log(token.recordset[0].token); 
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
@@ -802,4 +807,8 @@ module.exports.PropertySettings = async (req, res) => {
     await  sql.close() 
     //used to close the connection between database and the middleware
     res.json(req.body)//viewing the data which is array of obecjts which is json
+}
+module.exports.test = async (req, res) => {
+    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODAsImlhdCI6MTY0NjczNDI4MCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.CW7qJgwmyzLDWryb_Lv3mgwly1eY3X2fltht3Mry4_L3LWY_40hJBGpOS60_5oPdqMS2D2qiakYGVfBv-M_Ypzg2UbJKJ5BBmeejqPKTLtgNWIJ8YUNXi8Q2sP9p4NMzbuJJc9uKvCdh0ZVBPMXx7drB67wpQyjA5BMTHKYCd1qDxby2rzPRODYM22hV_oPNMkTsXAjo_fD9Kg4yM0mWybu4A8676qMvh4nbrMJCeTy6-eZO2gTEwxkM5HTgZUJvgJKhGMa0tsWOqesDOPrO8Ul0tOcjjvIWaBdMvzVxLkOO1UXilp64fFx0GRvGL5npiI6ZsSrd2BRehPCawf0NiZoe1-UmqghMq7urYFNJ6O218erUSmC8PqiyY_ndd2BmbjVeCooPbCWw_HGmGtJu-t1gOR7vE73qhBW3nY7D_0OJQcMIuGQHZqmp3tz4Cy-aSzJvMh_05P51IkG2tqXAOlO4zRkRvd-_aGRvAMTcp3DS1QXPnbWiXJuLfz-Y8Dmy"
+    allForTwo("2022-03-02", 10, 1, "getLocationDimensions", {}, token, res)
 }

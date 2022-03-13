@@ -16,7 +16,7 @@ appRoutes.post("/import", apiController.import)
 appRoutes.post("/importSun", sunController.importSun)
 appRoutes.get("/codes", apiController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
-appRoutes.get("/", apiController.status)
+appRoutes.get("/", apiController.test)
 appRoutes.post("/authorization", apiController.authorization)
 appRoutes.get("/sunCon", async (req, res) => {
 })
