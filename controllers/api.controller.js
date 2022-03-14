@@ -441,40 +441,84 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
             let limit=Object.keys(resp.data).length-1;
             let c=0;
             let j=0;
-            // while (z==true) {
-            //     console.log("--------------------------------------------------------------");
-            //     if (Array.isArray(arr[j][Object.keys(arr[j])[i]])==true) {
-            //         limit=Object.keys(arr[j][Object.keys(arr[j])[i]][0]).length+1
-            //         for (let k = 0; k < arr[j][Object.keys(arr[j])[i]].length; k++) {
-            //             let te=arr[j][Object.keys(arr[j])[i]][k]
-            //             for (let s = 0; s < Object.keys(arr[j])[i].length; s++) {
-            //                 if (s!=i) {
-            //                     te[Object.keys(arr[j])[s]]=arr[j][Object.keys(arr[j])[s]];
-            //                 }
-            //             }
-            //             console.log(te);
-            //             arr.push(arr[j][Object.keys(arr[j])[i]][k])
-            //             if(Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1>limit)
-            //                 limit=Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1
-            //         }
-            //         delete arr[j][Object.keys(arr[j])[i]]
-            //         j++;
-            //         i=-1;
-            //     }
-            //     if (i==limit) {
-            //         z=false
-            //     }
-            //     i++;
-            // }
-            let max = Object.keys(arr[arr.length-1]).length
-            console.log("max",max);
-            let arr2=[]
-            for (let i = 0; i < arr.length; i++) {
-                console.log(Object.keys(arr[i]).length);
-                if(Object.keys(arr[i]).length==max)
-                    arr2.push(arr[i])
+            while (z==true) {
+                delete arr[j]["workstations"]
+                if (Array.isArray(arr[j][Object.keys(arr[j])[i]])==true) {
+                    limit=Object.keys(arr[j][Object.keys(arr[j])[i]][0]).length+1
+                    for (let k = 0; k < arr[j][Object.keys(arr[j])[i]].length; k++) {
+                        let te=arr[j][Object.keys(arr[j])[i]][k]
+                        for (let s = 0; s < Object.keys(arr[j])[i].length; s++) {
+                            if (s!=i) {
+                                te[Object.keys(arr[j])[s]]=arr[j][Object.keys(arr[j])[s]];
+                            }
+                        }
+                        arr.push(arr[j][Object.keys(arr[j])[i]][k])
+                        if(Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1>limit)
+                            limit=Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1
+                    }
+                    delete arr[j][Object.keys(arr[j])[i]]
+                    j++;
+                    i=-1;
+                }
+                if (i==limit) {
+                    z=false
+                }
+                i++;
             }
-            res.json(arr2)
+            let max = Object.keys(arr[arr.length-1]).length
+            let oneForAll=[]
+            for (let i = 0; i < arr.length; i++) {
+                if(Object.keys(arr[i]).length==max){
+                    delete arr[i].undefined
+                    oneForAll.push(arr[i])
+                }
+            }
+            for (let i = 0; i < oneForAll.length; i++) {
+                let columns = ""
+                let data = ""
+                let check=""
+                for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
+                    columns += Object.keys(oneForAll[i])[j] + ','
+                    // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+                    if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
+                        check+=Object.keys(oneForAll[i])[j]+"=0 and "
+                        data += "0,"
+                    }
+                    else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
+                        check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
+                        data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
+                    }
+                    else{
+                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("")+"'"+" and "
+                        // console.log(oneForAll[i][Object.keys(oneForAll[i])[j]],typeof(oneForAll[i][Object.keys(oneForAll[i])[j]]));
+                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("") + "'" + ","
+                    }
+                }
+                // console.log(columns);
+                // console.log(data);
+                // console.log(check);
+            //     const addCase = await sql.query(
+            //         `IF NOT EXISTS (SELECT * FROM ${apiName}
+            //             WHERE ${check.slice(0, -4)})
+            //             BEGIN
+            //             INSERT INTO ${apiName} (${columns.slice(0, -1)})
+            //             VALUES (${data.slice(0, -1)})
+            //             END`);
+            //     // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+            }
+            // status.push({api:apiName,date:dat,stats:'success'})
+            // console.log(apiName,start);
+            // if (res==undefined) {
+            //     let status = await sql.query(
+            //         `IF NOT EXISTS (SELECT * FROM ImportStatus
+            //             WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+            //             BEGIN
+            //             INSERT INTO ImportStatus (ApiName,Date,Status)
+            //             VALUES ('${apiName}','${dat}','Successful')
+            //             END`)
+            // }
+            // else
+                res.json(oneForAll)
     }
     catch (error) {
         start++;
@@ -484,7 +528,7 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
         }
         if (start <= limit)
             setTimeout(function () {
-                test(dat, limit, start, apiName, body, token, res);
+                AllMight(dat, limit, start, apiName, body, token, res);
             }, 3000);
         else {
             console.log(dat,"field");
@@ -912,5 +956,5 @@ module.exports.PropertySettings = async (req, res) => {
 }
 module.exports.test = async (req, res) => {
     token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODAsImlhdCI6MTY0NjczNDI4MCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.CW7qJgwmyzLDWryb_Lv3mgwly1eY3X2fltht3Mry4_L3LWY_40hJBGpOS60_5oPdqMS2D2qiakYGVfBv-M_Ypzg2UbJKJ5BBmeejqPKTLtgNWIJ8YUNXi8Q2sP9p4NMzbuJJc9uKvCdh0ZVBPMXx7drB67wpQyjA5BMTHKYCd1qDxby2rzPRODYM22hV_oPNMkTsXAjo_fD9Kg4yM0mWybu4A8676qMvh4nbrMJCeTy6-eZO2gTEwxkM5HTgZUJvgJKhGMa0tsWOqesDOPrO8Ul0tOcjjvIWaBdMvzVxLkOO1UXilp64fFx0GRvGL5npiI6ZsSrd2BRehPCawf0NiZoe1-UmqghMq7urYFNJ6O218erUSmC8PqiyY_ndd2BmbjVeCooPbCWw_HGmGtJu-t1gOR7vE73qhBW3nY7D_0OJQcMIuGQHZqmp3tz4Cy-aSzJvMh_05P51IkG2tqXAOlO4zRkRvd-_aGRvAMTcp3DS1QXPnbWiXJuLfz-Y8Dmy"
-    allForTwo("2022-03-02", 10, 1, "getLocationDimensions", {}, token, res)
+    AllMight("2022-03-02", 10, 1, "getLocationDimensions", { }, token, res)
 }
