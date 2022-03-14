@@ -600,7 +600,7 @@ module.exports.import = async (req, res) => {
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
   //  guestChecks("2022-02-23", 10, 1,res)
-//   res.json("done")
+  res.json("done")
 }
 module.exports.codes = async (req, res) => {
     await sql.connect(config)
@@ -802,7 +802,6 @@ module.exports.deleteInterface = async (req, res) => {
     await sql.connect(config)
     //query to delete PropertySettings data from Mapping table  in  database 
     const values = await sql.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
-    await sql.query(`delete from interfaceDefinition where interfaceCode='${req.body.interfaceCode}'`);
     res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
 }
 module.exports.reviewInterface = async (req, res) => {
@@ -867,7 +866,7 @@ module.exports.getMapping = async (req, res) => {
     //retrive all mapping data from Mapping table in database
     const mapp = await sql.query(`SELECT * FROM Mapping`);
     //used to close the connection between database and the middleware
-    res.json(mapp.recordsets[0])//viewing the data which is array of obecjts which is json 
+    res.json(mapp.recordset)//viewing the data which is array of obecjts which is json 
 
 }
 module.exports.postMapping = async (req, res) => {
