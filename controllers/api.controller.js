@@ -424,6 +424,91 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
         }
     }
 }
+async function AllMight(dat, limit, start, apiName, body, token, res) {
+    let z=true; 
+    await sql.connect(config)
+    console.log(body);
+    try {
+            //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
+            //the data from the API
+            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer '+token
+                }
+            });
+            let arr=[];
+            let obj=[];
+            let i=0;
+            arr[0]=resp.data;
+            let limit=Object.keys(resp.data).length-1;
+            let c=0;
+            let j=0;
+            // while (z==true) {
+            //     console.log("--------------------------------------------------------------");
+            //     if (Array.isArray(arr[j][Object.keys(arr[j])[i]])==true) {
+            //         limit=Object.keys(arr[j][Object.keys(arr[j])[i]][0]).length+1
+            //         for (let k = 0; k < arr[j][Object.keys(arr[j])[i]].length; k++) {
+            //             let te=arr[j][Object.keys(arr[j])[i]][k]
+            //             for (let s = 0; s < Object.keys(arr[j])[i].length; s++) {
+            //                 if (s!=i) {
+            //                     te[Object.keys(arr[j])[s]]=arr[j][Object.keys(arr[j])[s]];
+            //                 }
+            //             }
+            //             console.log(te);
+            //             arr.push(arr[j][Object.keys(arr[j])[i]][k])
+            //             if(Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1>limit)
+            //                 limit=Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1
+            //         }
+            //         delete arr[j][Object.keys(arr[j])[i]]
+            //         j++;
+            //         i=-1;
+            //     }
+            //     if (i==limit) {
+            //         z=false
+            //     }
+            //     i++;
+            // }
+            let max = Object.keys(arr[arr.length-1]).length
+            console.log("max",max);
+            let arr2=[]
+            for (let i = 0; i < arr.length; i++) {
+                console.log(Object.keys(arr[i]).length);
+                if(Object.keys(arr[i]).length==max)
+                    arr2.push(arr[i])
+            }
+            res.json(arr2)
+    }
+    catch (error) {
+        start++;
+        console.log(error);
+        if (error.message.includes(400)) {
+            delete body[Object.keys(body)[1]]
+        }
+        if (start <= limit)
+            setTimeout(function () {
+                test(dat, limit, start, apiName, body, token, res);
+            }, 3000);
+        else {
+            console.log(dat,"field");
+            status.push({api:apiName,date:dat,stats:'field'})
+            if (res==undefined){
+                // await sql.query(
+                    // `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    // WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    // BEGIN
+                    // INSERT INTO ImportStatus (ApiName,Date,Status)
+                    // VALUES (${apiName},'${dat}','Failed')
+                    // END`);
+            }
+            else
+                res.json({api:apiName,date:dat,stats:'Failed'})
+        }
+    }
+}
 const job = schedule.scheduleJob('0 0 0 * * *', async function () {
     status = [];
     let dt = new Date();
@@ -784,91 +869,6 @@ console.log(req.body[0].MappingCode);
 
     //used to close the connection between database and the middleware
     res.json(req.body)//viewing the data which is array of obecjts which is json 
-}
-async function test(dat, limit, start, apiName, body, token, res) {
-    let z=true; 
-    await sql.connect(config)
-    console.log(body);
-    try {
-            //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
-            //the data from the API
-            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
-                headers: {
-                    // 'application/json' is the modern content-type for JSON, but some
-                    // older servers may use 'text/json'.
-                    // See: http://bit.ly/text-json
-                    'content-type': 'application/json',
-                    'Authorization': 'Bearer '+token
-                }
-            });
-            let arr=[];
-            let obj=[];
-            let i=0;
-            arr[0]=resp.data;
-            let limit=Object.keys(resp.data).length-1;
-            let c=0;
-            let j=0;
-            // while (z==true) {
-            //     console.log("--------------------------------------------------------------");
-            //     if (Array.isArray(arr[j][Object.keys(arr[j])[i]])==true) {
-            //         limit=Object.keys(arr[j][Object.keys(arr[j])[i]][0]).length+1
-            //         for (let k = 0; k < arr[j][Object.keys(arr[j])[i]].length; k++) {
-            //             let te=arr[j][Object.keys(arr[j])[i]][k]
-            //             for (let s = 0; s < Object.keys(arr[j])[i].length; s++) {
-            //                 if (s!=i) {
-            //                     te[Object.keys(arr[j])[s]]=arr[j][Object.keys(arr[j])[s]];
-            //                 }
-            //             }
-            //             console.log(te);
-            //             arr.push(arr[j][Object.keys(arr[j])[i]][k])
-            //             if(Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1>limit)
-            //                 limit=Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1
-            //         }
-            //         delete arr[j][Object.keys(arr[j])[i]]
-            //         j++;
-            //         i=-1;
-            //     }
-            //     if (i==limit) {
-            //         z=false
-            //     }
-            //     i++;
-            // }
-            let max = Object.keys(arr[arr.length-1]).length
-            console.log("max",max);
-            let arr2=[]
-            for (let i = 0; i < arr.length; i++) {
-                console.log(Object.keys(arr[i]).length);
-                if(Object.keys(arr[i]).length==max)
-                    arr2.push(arr[i])
-            }
-            res.json(arr2)
-    }
-    catch (error) {
-        start++;
-        console.log(error);
-        if (error.message.includes(400)) {
-            delete body[Object.keys(body)[1]]
-        }
-        if (start <= limit)
-            setTimeout(function () {
-                test(dat, limit, start, apiName, body, token, res);
-            }, 3000);
-        else {
-            console.log(dat,"field");
-            status.push({api:apiName,date:dat,stats:'field'})
-            if (res==undefined){
-                // await sql.query(
-                    // `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    // WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
-                    // BEGIN
-                    // INSERT INTO ImportStatus (ApiName,Date,Status)
-                    // VALUES (${apiName},'${dat}','Failed')
-                    // END`);
-            }
-            else
-                res.json({api:apiName,date:dat,stats:'Failed'})
-        }
-    }
 }
 module.exports.PropertySettings = async (req, res) => {
     //used to establish connection between database and the middleware
