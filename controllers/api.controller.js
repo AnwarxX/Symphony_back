@@ -220,7 +220,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
 async function allForOne(dat, limit, start, apiName, body, token, res) {
     await sql.connect(config)
-    console.log(body);
+    // console.log(body);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
@@ -269,9 +269,9 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                         data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
                     }
                 }
-                console.log(columns);
-                console.log(data);
-                console.log(check);
+                // console.log(columns);
+                // console.log(data);
+                // console.log(check);
                 const addCase = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
@@ -283,6 +283,13 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
             }
             status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
+                console.log(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+                        BEGIN
+                        INSERT INTO ImportStatus (ApiName,Date,Status)
+                        VALUES ('${apiName}','${dat}','Successful')
+                        END`);
                 let status = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
@@ -305,6 +312,13 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
             console.log(dat,"field");
             status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
+                console.log(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES (${apiName},'${dat}','Failed')
+                    END`);
                 await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
@@ -337,7 +351,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                 }
             });
                 // here we asign the response data to a variable called oneforall
-            console.log(Object.keys(resp));
+            // console.log(Object.keys(resp));
             let oneForAll = resp.data[Object.keys(resp.data)[[Object.keys(resp.data).length-1]]]
             for (let i = 0; i < oneForAll.length; i++) {
                 let columns = ""
@@ -361,16 +375,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                         data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("") + "'" + ","
                     }
                 }
-                console.log(columns);
-                console.log(data);
-                console.log(check);
-                console.log(
-                    `IF NOT EXISTS (SELECT * FROM ${apiName}
-                        WHERE ${check.slice(0, -4)})
-                        BEGIN
-                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
-                        VALUES (${data.slice(0, -1)})
-                        END`);
+                // console.log(columns);
+                // console.log(data);
+                // console.log(check);
                 const addCase = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
@@ -446,6 +453,21 @@ module.exports.import = async (req, res) => {
                 allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
 
             }
+            else if(req.body.api=="all"){
+                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                // allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                // allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                // allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                // guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token)
+                // guestChecks(req.body.date, 10, 1, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                // allForTwo(req.body.date, 10, 1, "getLocationDimensions", token.recordset[0].token)
+            } 
             else{
                 allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token, res)
 
