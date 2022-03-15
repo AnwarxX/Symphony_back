@@ -16,10 +16,9 @@ let scJop=[]
 
 async function guestChecks(dat, limit, start, token, res) {
     let resp;
-    console.log('start', start);
     await sql.connect(config)
+    console.log("guestChecks",start);
     try {
-        console.log("try");
         //used to establish connection between database and the middleware
         //this loop itrates for more 8 days from the date that was sent in the equest
         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
@@ -57,8 +56,8 @@ async function guestChecks(dat, limit, start, token, res) {
                 }
                 columns += Object.keys(oneForAll[i])[j] + ","
             }
-            console.log(columns);
-            console.log(data);
+            // console.log(columns);
+            // console.log(data);
             const media = await sql.query(
                 `IF NOT EXISTS (SELECT * FROM getGuestChecks
                     WHERE ${check.slice(0, -4)})
@@ -69,6 +68,7 @@ async function guestChecks(dat, limit, start, token, res) {
             //this query is used to insert the vales in thier columns
             // const media = await sql.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
         }
+        
         if (res==undefined) {
             let status = await sql.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -77,28 +77,27 @@ async function guestChecks(dat, limit, start, token, res) {
                     INSERT INTO ImportStatus (ApiName,Date,Status)
                     VALUES ('getGuestChecks','${dat}','Successful')
                     END`)
-                    status.push({API:"getGuestChecks",date:dat,status:'success'})
+                    // status.push({API:"getGuestChecks",date:dat,status:'success'})
         }
         else
             res.json({api:"getGuestChecks",date:dat,stats:"Successfylly"})
     } catch (error) {
         start++;
-        console.log(error);
+        console.log(error.message);
         if (start <= limit)
             setTimeout(function () {
                 guestChecks(dat, limit, start, token, res);
             }, 3000);
         else {
             console.log(dat,"field");
-            res.json({date:dat,stats:"field"})
-            status.push({API:"Guest Checks",date:dat,stats:'field'})
+            // status.push({API:"Guest Checks",date:dat,stats:'field'})
             if (res==undefined){
                 let status = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES (getGuestChecks,'${dat}','Failed')
+                    VALUES ('getGuestChecks','${dat}','Failed')
                     END`)
             }
             else
@@ -110,6 +109,7 @@ async function guestChecks(dat, limit, start, token, res) {
 async function guestChecksDetails(dat, limit, start, token, res) {
     console.log("guestChecksDetails");
     await sql.connect(config)
+    console.log("guestChecksDetails",start);
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
     try {
@@ -170,9 +170,9 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                         data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]] + "'" + ","
                     }
                 }
-                console.log(columns);
-                console.log(data);
-                console.log(check);
+                // console.log(columns);
+                // console.log(data);
+                // console.log(check);
                 const addCase = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM GuestChecksLineDetails
                         WHERE ${check.slice(0, -4)})
@@ -183,7 +183,8 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                 // const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
             }
         // }
-        status.push({API:"guestChecksDetails",date:dat,status:'success'})
+        // status.push({API:"guestChecksDetails",date:dat,status:'success'})
+        
         if (res==undefined) {
             let status = await sql.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -204,7 +205,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                 guestChecksDetails(dat, limit, start, token, res);
             }, 3000);
         else {
-            status.push({api:'guestChecksDetails',date:dat,stats:'field'})
+            // status.push({api:'guestChecksDetails',date:dat,stats:'field'})
             if (res==undefined)
                 await sql.query(
                     `IF NOT EXISTS (SELECT * FROM guestChecksDetails
@@ -220,6 +221,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
 async function allForOne(dat, limit, start, apiName, body, token, res) {
     await sql.connect(config)
+    console.log(apiName,start);
     // console.log(body);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
@@ -281,8 +283,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                         END`);
                 // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
-            status.push({api:apiName,date:dat,stats:'success'})
-            console.log(apiName,start);
+            // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
                 let status = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -304,7 +305,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
             }, 3000);
         else {
             console.log(dat,"field");
-            status.push({api:apiName,date:dat,stats:'field'})
+            // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
                 console.log(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -328,6 +329,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
 }
 async function allForTwo(dat, limit, start, apiName, body, token, res) {
     await sql.connect(config)
+    console.log(apiName,start);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
@@ -380,8 +382,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                         END`);
                 // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
-            status.push({api:apiName,date:dat,stats:'success'})
-            console.log(apiName,start);
+            // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
                 let status = await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -403,7 +404,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
             }, 3000);
         else {
             console.log(dat,"field");
-            status.push({api:apiName,date:dat,stats:'field'})
+            // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
                 await sql.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -532,7 +533,7 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
             }, 3000);
         else {
             console.log(dat,"field");
-            status.push({api:apiName,date:dat,stats:'field'})
+            // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
                 // await sql.query(
                     // `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -569,11 +570,11 @@ module.exports.import = async (req, res) => {
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
-            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token, res)
-            guestChecks(req.body.date, 10, 1, token.recordset[0].token, res)
+            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token)
+            guestChecks(req.body.date, 10, 1, token.recordset[0].token)
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
-                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token, res)
+                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
 
             }
             else if(req.body.api=="all"){
@@ -589,11 +590,10 @@ module.exports.import = async (req, res) => {
                 allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
                 allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
                 allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getLocationDimensions", token.recordset[0].token)
-                res.json("done")
-            } 
+                allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
+            }
             else{
-                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token, res)
+                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token)
 
             }        }
     // }
