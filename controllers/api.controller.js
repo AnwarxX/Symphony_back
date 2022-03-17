@@ -1147,11 +1147,15 @@ module.exports.PropertySettings = async (req, res) => {
       const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
       await  sql.close() 
       console.log(sunCon,sunCon.recordset[0].SunSchedule);
+      let sunConuser =sunCon.recordset[0].SunUser;
+      let sunConSunPassword =sunCon.recordset[0].SunPassword
+      let sunConSunserver =sunCon.recordset[0].Sunserver
+      let sunConSunDatabase  =sunCon.recordset[0].SunDatabase
       const dbConfig ={
-            user: "sa",
-            password: "mynewP@ssw0rdsa",
-            server: "192.168.1.120",
-            database: "SunSystemsData",
+            user:sunConuser,
+            password: sunConSunPassword,
+            server: sunConSunserver,
+            database: sunConSunDatabase,
             "options": {
               "abortTransactionOnError": true,
               "encrypt": false,
