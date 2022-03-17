@@ -11,6 +11,7 @@ const date = require('date-and-time');//call for using date-and-time module
 const { response } = require('express');
 const qs = require("qs");
 const { json } = require('body-parser');
+const { res } = require('date-and-time');
 var status=[];
 let scJop=[]
 
@@ -84,6 +85,9 @@ async function guestChecks(dat, limit, start, token, res) {
     } catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 guestChecks(dat, limit, start, token, res);
@@ -200,6 +204,9 @@ async function guestChecksDetails(dat, limit, start, token, res) {
     } catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 guestChecksDetails(dat, limit, start, token, res);
@@ -299,6 +306,9 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
     catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 allForOne(dat, limit, start, apiName, body, token, res);
@@ -398,6 +408,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
     catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 allForTwo(dat, limit, start, apiName, body, token, res);
@@ -523,7 +536,11 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
     }
     catch (error) {
         start++;
-        console.log(error);
+        console.log(error.message);
+        if(error.message.includes('expired')){
+            token= await refreshToken(token);
+            console.log(token);
+        }
         if (error.message.includes(400)) {
             delete body[Object.keys(body)[1]]
         }
@@ -546,6 +563,33 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
             else
                 res.json({api:apiName,date:dat,stats:'Failed'})
         }
+    }
+}
+async function refreshToken(token) {
+    try {
+        await sql.connect(config)
+        x=await sql.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
+        console.log(x);
+        let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
+            scope: "openid", //gave the values directly for testing
+            grant_type: "refresh_token",
+            client_id: x.recordset[0].clientId,
+            code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
+            refresh_token: x.recordset[0].refreshToken,
+            redirect_url: "apiaccount://callback"
+        }), {
+            headers: {
+                // 'application/json' is the modern content-type for JSON, but some
+                // older servers may use 'text/json'.
+                // See: http://bit.ly/text-json
+                'content-type': 'application/x-www-form-urlencoded'
+            }
+        , withCredentials: true });
+        y=await sql.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
+        console.log("refreshed");
+        token= resp2.data.id_token;
+    } catch (error) {
+        console.log(error.message);
     }
 }
 const job = schedule.scheduleJob('0 0 0 * * *', async function () {
@@ -683,13 +727,10 @@ module.exports.authorization = async (req, res) => {
             charset: 'utf8'
           };
         await sql.connect(dbConfig)
-        
-        console.log(sql.connect(dbConfig),"kkk");
         await  sql.close() 
 
         token=resp2.data.id_token
         let runtime;
-        console.log(token);
         let myDate=new Date(req.body.SunSchedule)
         switch (req.body.SunScheduleStatue) {
             case "day": {//every hour
@@ -1176,6 +1217,9 @@ module.exports.PropertySettings = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODAsImlhdCI6MTY0NjczNDI4MCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.CW7qJgwmyzLDWryb_Lv3mgwly1eY3X2fltht3Mry4_L3LWY_40hJBGpOS60_5oPdqMS2D2qiakYGVfBv-M_Ypzg2UbJKJ5BBmeejqPKTLtgNWIJ8YUNXi8Q2sP9p4NMzbuJJc9uKvCdh0ZVBPMXx7drB67wpQyjA5BMTHKYCd1qDxby2rzPRODYM22hV_oPNMkTsXAjo_fD9Kg4yM0mWybu4A8676qMvh4nbrMJCeTy6-eZO2gTEwxkM5HTgZUJvgJKhGMa0tsWOqesDOPrO8Ul0tOcjjvIWaBdMvzVxLkOO1UXilp64fFx0GRvGL5npiI6ZsSrd2BRehPCawf0NiZoe1-UmqghMq7urYFNJ6O218erUSmC8PqiyY_ndd2BmbjVeCooPbCWw_HGmGtJu-t1gOR7vE73qhBW3nY7D_0OJQcMIuGQHZqmp3tz4Cy-aSzJvMh_05P51IkG2tqXAOlO4zRkRvd-_aGRvAMTcp3DS1QXPnbWiXJuLfz-Y8Dmy"
-    AllMight("2022-03-02", 10, 1, "getLocationDimensions", { }, token, res)
+    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODMsImlhdCI6MTY0NjczNDI4MywidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Brtctm7UDkDjly_la_czB7dfePwsxYJk76ErUj0fLNYfbDAj4XTC8tUq7hDS_FifaB16qg3LG8vbfZtHR2-WS9DbBz5ZZ9jb_Y-91_u-L84WUJQG0nS2CJd8SSiFedbeUNz2Yzi7nr9KQDddnUXJ0cMs1RpA9uhZ0rj5ecuUqvm-r0D-1FCtfa6KdKQB9IIMBy9WzoH4I4EHVcMXKRgtqrrWwYdpQVUtHS7w2984PmbfksM6dl0Y_NPRuHWyBJxE0L3zj-Q2y0eBT6XKNQ1XakdSdI2-_l-4ni2O0NRRvsSSJ_kgS2NX0cOLy8ez7Hl02aNuh-uOYXugZb9x_xg5Dq0Kd33HPZgTKN_ruusbm40f3qhz6emSy5AcO7GD_FmqQjWYLdYNHuKrro-znh8oFFU5l2VrfCk4QYBjb049bJVeD4EJCXuG-4d0-ADIRs_zAgSnMottvovKPyzVqn5pHGQuamcdkDCdPY2x_o2ZTfaacJ2lZlxdpZdbP2jNzPrb"
+    AllMight("2022-03-02", 10, 1, "getTenderMediaDailyTotals", {"locRef": "CHGOUNA","busDt":'2022-03-15'}, token, res)
 }
+token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
+// refreshToken(token)
+// console.log(token);
