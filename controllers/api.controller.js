@@ -587,24 +587,35 @@ async function refreshToken(token) {
         , withCredentials: true });
         y=await sql.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
         console.log("refreshed");
+        console.log(resp2.data.id_token);
         token= resp2.data.id_token;
     } catch (error) {
         console.log(error.message);
     }
 }
-const job = schedule.scheduleJob('0 0 0 * * *', async function () {
+const job = schedule.scheduleJob('* * * * * *', async function () {
     status = [];
     let dt = new Date();
     dt.setHours(dt.getHours() + 2);
     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-    console.log(new Date());
-    //await guestChecks(dat, 10, 1);
-    //await allForOne(dat, 10, 1, 'getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": dat })
-    //await guestChecksDetails(dat, 10, 1);
-    //await TaxDailyTotal(dat, 10, 1)
-    //await ServiceChargeDailyTotals(dat, 10, 1)
-    //await DiscountDailyTotals(dat, 10, 1)
+    await sql.connect(config)
+    const token = await sql.query(`SELECT token FROM interfaceDefinition WHERE interfaceCode=43`);
+    console.log(dat);
+    allForOne(dat, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    guestChecksDetails(dat, 10, 1, token.recordset[0].token)
+    guestChecks(dat, 10, 1, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
 });
+job.cancel();
 module.exports.import = async (req, res) => {
     console.log(req.body.api);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
@@ -908,7 +919,9 @@ module.exports.update = async (req, res) => {
        
               let hour = req.body.SunSchedule.split(":")[0];
               let min = req.body.SunSchedule.split(":")[1];
-              runtime = `0 ${min} ${hour} * * *`
+              console.log("hour",hour);
+              console.log("min",min);
+              runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
               console.log(runtime);
               break;
             }
@@ -926,32 +939,32 @@ module.exports.update = async (req, res) => {
             }
             default:
               break;
-          }
-          req.body.SunSchedule=runtime
-          myDate=new Date(req.body.ApiSchedule)
-          switch (req.body.ApiScheduleStatue) {
-              case "apiday": {//every hour
-                let hour = req.body.ApiSchedule.split(":")[0];
-                let min = req.body.ApiSchedule.split(":")[1];
-                runtime = `0 ${min} ${hour} * * *`
-                console.log(runtime);
-                break;
-              }
-              case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-                console.log(runtime);
-         
-                break;
-              }
-              case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-                console.log(runtime);
-         
-                break;
-              }
-              default:
-                break;
+        }
+        req.body.SunSchedule=runtime
+        myDate=new Date(req.body.ApiSchedule)
+        switch (req.body.ApiScheduleStatue) {
+            case "apiday": {//every hour
+            let hour = req.body.ApiSchedule.split(":")[0];
+            let min = req.body.ApiSchedule.split(":")[1];
+            runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+            console.log(runtime);
+            break;
             }
+            case "apiyear": {
+            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+            console.log(runtime);
+        
+            break;
+            }
+            case "apimonth": {
+            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+            console.log(runtime);
+        
+            break;
+            }
+            default:
+            break;
+        }
         req.body.ApiSchedule=runtime
         let  refresh_token =resp2.data.refresh_token
         let columns = ""
@@ -986,18 +999,19 @@ module.exports.update = async (req, res) => {
             `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
             where interfaceCode=${req.body.interfaceCode}`);
 
-         job.reschedule(req.body.ApiSchedule)     
+        job.reschedule(req.body.ApiSchedule)
         //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         let x=[]
+        console.log(error);
         if(error.message.includes(400))
             x.push("Invalid Client ID")
         if(error.message.includes(401)){
             x.push("Invalid username ,password or enterprise name")
         }
-        if(error.message.includes('connect'))
-            x.push(error.message)
+       else
+            x.push(error)
         res.json(x)
     }
 }
@@ -1076,8 +1090,10 @@ module.exports.stop = async (req, res) => {
 }
 module.exports.start = async (req, res) => {// dont forget to make this function for real
     try {
-        job.reschedule('* * * * * *');
-        res.json("started") 
+        await sql.connect(config)
+        const addCase = await sql.query(`SELECT ApiSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
+         job.reschedule(addCase.recordset[0].ApiSchedule);
+        res.json("done") 
     } catch (error) {
         res.json(error.message)
     }
@@ -1217,8 +1233,8 @@ module.exports.PropertySettings = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODMsImlhdCI6MTY0NjczNDI4MywidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Brtctm7UDkDjly_la_czB7dfePwsxYJk76ErUj0fLNYfbDAj4XTC8tUq7hDS_FifaB16qg3LG8vbfZtHR2-WS9DbBz5ZZ9jb_Y-91_u-L84WUJQG0nS2CJd8SSiFedbeUNz2Yzi7nr9KQDddnUXJ0cMs1RpA9uhZ0rj5ecuUqvm-r0D-1FCtfa6KdKQB9IIMBy9WzoH4I4EHVcMXKRgtqrrWwYdpQVUtHS7w2984PmbfksM6dl0Y_NPRuHWyBJxE0L3zj-Q2y0eBT6XKNQ1XakdSdI2-_l-4ni2O0NRRvsSSJ_kgS2NX0cOLy8ez7Hl02aNuh-uOYXugZb9x_xg5Dq0Kd33HPZgTKN_ruusbm40f3qhz6emSy5AcO7GD_FmqQjWYLdYNHuKrro-znh8oFFU5l2VrfCk4QYBjb049bJVeD4EJCXuG-4d0-ADIRs_zAgSnMottvovKPyzVqn5pHGQuamcdkDCdPY2x_o2ZTfaacJ2lZlxdpZdbP2jNzPrb"
-    AllMight("2022-03-02", 10, 1, "getTenderMediaDailyTotals", {"locRef": "CHGOUNA","busDt":'2022-03-15'}, token, res)
+    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDg5NzI2OTMsImlhdCI6MTY0Nzc2MzA5MywidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.d9qT8hqCP5Udv6I0nw2u0H9-uxUcgqPBq6PziAiVcvxlm0NWwrB_FV_i5AMYgZoc_0T-Y55ImPd_6W8C4PidvPk6N3vEmofCU5Pv0Dz-3hEl4xeFn2NggrCmBFEfeAFGSEkuNsE9Wc5n_VsNqnOHrYDX0vkQIBH4sdcfvEpyQJa3HqhxH_SONJG-sXfWtr2cRYPNrUR6sIGvhpCedTlWXGxyxQd4e3AnDEhffxRP-oUq3cxy49t4esLAT97dcszb8VXVK0CGzPxFnQyXs78-ijpnR6qYS8EeEDbqI5x8dRz6Okr7_ILHDyoBHJLW8L-tYnQLui7yVAYnkfs4beG5lbp2HE5ju6dmClJHDdafFedDu7_NitQstfYDV3iZuV7F7_W2XoXeAaarT_6ggT1yDI8FG5dz9edssko68kTpxQghmxbOC39mRq2xoPOgJVF1q9yz8_ksT2CjxEsu8dFVKIKUTvc3FO-dqkoi37OBLrOUzRwmcP840xpp_L9l4VAU"
+    allForOne("2022-03-02", 10, 1, "getTenderMediaDailyTotals", {"locRef": "CHGOUNA","busDt":'2022-03-15'}, token, res)
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)
