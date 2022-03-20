@@ -742,13 +742,13 @@ module.exports.authorization = async (req, res) => {
               break;
             }
             case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
               console.log(runtime);
        
               break;
             }
             case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
               console.log(runtime);
        
               break;
@@ -767,13 +767,13 @@ module.exports.authorization = async (req, res) => {
                 break;
               }
               case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
                 console.log(runtime);
          
                 break;
               }
               case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
                 console.log(runtime);
          
                 break;
@@ -913,13 +913,13 @@ module.exports.update = async (req, res) => {
               break;
             }
             case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } ${myDate.getMonth() + 1} *`;
               console.log(runtime);
        
               break;
             }
             case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
               console.log(runtime);
        
               break;
@@ -938,13 +938,13 @@ module.exports.update = async (req, res) => {
                 break;
               }
               case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
                 console.log(runtime);
          
                 break;
               }
               case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
                 console.log(runtime);
          
                 break;
