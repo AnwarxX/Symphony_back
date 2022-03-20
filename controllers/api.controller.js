@@ -849,7 +849,6 @@ module.exports.authorization = async (req, res) => {
         res.json(x)
     }
 }
-
 module.exports.update = async (req, res) => {
     console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
