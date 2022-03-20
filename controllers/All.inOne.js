@@ -1,0 +1,62 @@
+// here we do all functionality that sends requests to the api and retrive data so we can send it to the frontend and show it in a user
+// interface 
+const appRoutes = require('express').Router(); //call for Router method inside express module to give access for any endpoint
+const e = require('cors');
+const sql = require('mssql')//call for using sql module
+const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
+var CryptoJS = require("crypto-js");
+
+module.exports.uploadLicense = async (req, res) => {
+    try {
+        //used to establish connection between database and the middleware
+        await sql.connect(config)
+        let license =JSON.parse(req.body.license)
+        let exDate =license.expiryDate
+        let token =license.token
+
+        var bytes  = CryptoJS.AES.decrypt(token, 'lamiaa');
+        var originalText = bytes.toString(CryptoJS.enc.Utf8);
+        console.log(originalText[0].EndDate);
+        var date1 = new Date();
+        var date2 = new Date(exDate);
+        if(token == undefined || exDate == undefined){
+            res.json("invalid License")
+        }
+        else if(date1.getTime() > date2.getTime()){
+            res.json("license has expired")
+         }
+         else {
+
+        console.log(exDate,token)
+       
+        
+        //best to use .getTime() to compare dates
+        if(date1.getTime() < date2.getTime()){
+           let t = await sql.query(`select * from  license`);
+           //console.log(t.recordset.length,"kjkjj");
+           if(t.recordset.length == 0){
+              await sql.query(`insert into  license (token) values('${token}')`);
+           }
+           else if(t.recordset.length > 0){
+            console.log(t.recordset.length,"kjkjj");
+
+               //await sql.query(`delete * from license `);
+            await sql.query(` UPDATE license set token='${token}' 
+            WHERE token =(SELECT token FROM license)`);
+                
+
+           }
+        }
+        res.json("License Submited")//viewing the data which is array of obecjts which is json 
+        }
+    } catch (error) {
+        let x ;
+        if(error.message.includes("Unexpected ") ){
+            x="invalid License"
+        }
+        else {
+            x =error.message
+        }
+        res.json(x)
+    }
+}

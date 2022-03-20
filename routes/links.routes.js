@@ -12,6 +12,7 @@ const { response } = require('express');
 const qs = require("qs")
 const apiController=require('../controllers/api.controller')
 const sunController=require('../controllers/sun.controller');
+const allInOne =require('../controllers/All.inOne')
 const req = require('express/lib/request');
 appRoutes.post("/import", apiController.import)
 appRoutes.get("/loc",async(req,res)=>{
@@ -54,6 +55,7 @@ appRoutes.post('/mapping', apiController.postMapping);
 appRoutes.post('/PropertySettings', apiController.PropertySettings);
 appRoutes.post('/reviewInterface', apiController.reviewInterface);
 appRoutes.post('/update', apiController.update);
+appRoutes.post('/uploadLicense',allInOne.uploadLicense)
 
 
 module.exports = appRoutes;
