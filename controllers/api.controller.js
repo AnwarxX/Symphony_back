@@ -11,6 +11,7 @@ const date = require('date-and-time');//call for using date-and-time module
 const { response } = require('express');
 const qs = require("qs");
 const { json } = require('body-parser');
+const { res } = require('date-and-time');
 var status=[];
 let scJop=[]
 
@@ -84,6 +85,9 @@ async function guestChecks(dat, limit, start, token, res) {
     } catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 guestChecks(dat, limit, start, token, res);
@@ -200,6 +204,9 @@ async function guestChecksDetails(dat, limit, start, token, res) {
     } catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 guestChecksDetails(dat, limit, start, token, res);
@@ -299,6 +306,9 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
     catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 allForOne(dat, limit, start, apiName, body, token, res);
@@ -398,6 +408,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
     catch (error) {
         start++;
         console.log(error.message);
+        if(error.message.includes('expired')){
+            token=refreshToken(token);
+        }
         if (start <= limit)
             setTimeout(function () {
                 allForTwo(dat, limit, start, apiName, body, token, res);
@@ -523,7 +536,11 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
     }
     catch (error) {
         start++;
-        console.log(error);
+        console.log(error.message);
+        if(error.message.includes('expired')){
+            token= await refreshToken(token);
+            console.log(token);
+        }
         if (error.message.includes(400)) {
             delete body[Object.keys(body)[1]]
         }
@@ -548,19 +565,57 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
         }
     }
 }
-const job = schedule.scheduleJob('0 0 0 * * *', async function () {
+async function refreshToken(token) {
+    try {
+        await sql.connect(config)
+        x=await sql.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
+        console.log(x);
+        let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
+            scope: "openid", //gave the values directly for testing
+            grant_type: "refresh_token",
+            client_id: x.recordset[0].clientId,
+            code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
+            refresh_token: x.recordset[0].refreshToken,
+            redirect_url: "apiaccount://callback"
+        }), {
+            headers: {
+                // 'application/json' is the modern content-type for JSON, but some
+                // older servers may use 'text/json'.
+                // See: http://bit.ly/text-json
+                'content-type': 'application/x-www-form-urlencoded'
+            }
+        , withCredentials: true });
+        y=await sql.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
+        console.log("refreshed");
+        console.log(resp2.data.id_token);
+        token= resp2.data.id_token;
+    } catch (error) {
+        console.log(error.message);
+    }
+}
+const job = schedule.scheduleJob('* * * * * *', async function () {
     status = [];
     let dt = new Date();
     dt.setHours(dt.getHours() + 2);
     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-    console.log(new Date());
-    //await guestChecks(dat, 10, 1);
-    //await allForOne(dat, 10, 1, 'getTaxDailyTotals', { "locRef": "CHGOUNA", "busDt": dat })
-    //await guestChecksDetails(dat, 10, 1);
-    //await TaxDailyTotal(dat, 10, 1)
-    //await ServiceChargeDailyTotals(dat, 10, 1)
-    //await DiscountDailyTotals(dat, 10, 1)
+    await sql.connect(config)
+    const token = await sql.query(`SELECT token FROM interfaceDefinition WHERE interfaceCode=43`);
+    console.log(dat);
+    allForOne(dat, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    allForOne(dat, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
+    guestChecksDetails(dat, 10, 1, token.recordset[0].token)
+    guestChecks(dat, 10, 1, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token)
+    allForTwo(dat, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
 });
+job.cancel();
 module.exports.import = async (req, res) => {
     console.log(req.body.api);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
@@ -683,13 +738,10 @@ module.exports.authorization = async (req, res) => {
             charset: 'utf8'
           };
         await sql.connect(dbConfig)
-        
-        console.log(sql.connect(dbConfig),"kkk");
         await  sql.close() 
 
         token=resp2.data.id_token
         let runtime;
-        console.log(token);
         let myDate=new Date(req.body.SunSchedule)
         switch (req.body.SunScheduleStatue) {
             case "day": {//every hour
@@ -701,13 +753,13 @@ module.exports.authorization = async (req, res) => {
               break;
             }
             case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
               console.log(runtime);
        
               break;
             }
             case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
               console.log(runtime);
        
               break;
@@ -726,13 +778,13 @@ module.exports.authorization = async (req, res) => {
                 break;
               }
               case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
                 console.log(runtime);
          
                 break;
               }
               case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
                 console.log(runtime);
          
                 break;
@@ -797,7 +849,6 @@ module.exports.authorization = async (req, res) => {
         res.json(x)
     }
 }
-
 module.exports.update = async (req, res) => {
     console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
@@ -867,50 +918,52 @@ module.exports.update = async (req, res) => {
        
               let hour = req.body.SunSchedule.split(":")[0];
               let min = req.body.SunSchedule.split(":")[1];
-              runtime = `0 ${min} ${hour} * * *`
+              console.log("hour",hour);
+              console.log("min",min);
+              runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
               console.log(runtime);
               break;
             }
             case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } ${myDate.getMonth() + 1} *`;
               console.log(runtime);
        
               break;
             }
             case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
               console.log(runtime);
        
               break;
             }
             default:
               break;
-          }
-          req.body.SunSchedule=runtime
-          myDate=new Date(req.body.ApiSchedule)
-          switch (req.body.ApiScheduleStatue) {
-              case "apiday": {//every hour
-                let hour = req.body.ApiSchedule.split(":")[0];
-                let min = req.body.ApiSchedule.split(":")[1];
-                runtime = `0 ${min} ${hour} * * *`
-                console.log(runtime);
-                break;
-              }
-              case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} ${myDate.getMonth() + 1} *`;
-                console.log(runtime);
-         
-                break;
-              }
-              case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getDay() - 1} * *`;
-                console.log(runtime);
-         
-                break;
-              }
-              default:
-                break;
+        }
+        req.body.SunSchedule=runtime
+        myDate=new Date(req.body.ApiSchedule)
+        switch (req.body.ApiScheduleStatue) {
+            case "apiday": {//every hour
+            let hour = req.body.ApiSchedule.split(":")[0];
+            let min = req.body.ApiSchedule.split(":")[1];
+            runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+            console.log(runtime);
+            break;
             }
+            case "apiyear": {
+            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+            console.log(runtime);
+        
+            break;
+            }
+            case "apimonth": {
+            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+            console.log(runtime);
+        
+            break;
+            }
+            default:
+            break;
+        }
         req.body.ApiSchedule=runtime
         let  refresh_token =resp2.data.refresh_token
         let columns = ""
@@ -945,18 +998,19 @@ module.exports.update = async (req, res) => {
             `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
             where interfaceCode=${req.body.interfaceCode}`);
 
-         job.reschedule(req.body.ApiSchedule)     
+        job.reschedule(req.body.ApiSchedule)
         //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         let x=[]
+        console.log(error);
         if(error.message.includes(400))
             x.push("Invalid Client ID")
         if(error.message.includes(401)){
             x.push("Invalid username ,password or enterprise name")
         }
-        if(error.message.includes('connect'))
-            x.push(error.message)
+       else
+            x.push(error)
         res.json(x)
     }
 }
@@ -1035,8 +1089,10 @@ module.exports.stop = async (req, res) => {
 }
 module.exports.start = async (req, res) => {// dont forget to make this function for real
     try {
-        job.reschedule('* * * * * *');
-        res.json("started") 
+        await sql.connect(config)
+        const addCase = await sql.query(`SELECT ApiSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
+         job.reschedule(addCase.recordset[0].ApiSchedule);
+        res.json("done") 
     } catch (error) {
         res.json(error.message)
     }
@@ -1176,6 +1232,9 @@ module.exports.PropertySettings = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDM4ODAsImlhdCI6MTY0NjczNDI4MCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.CW7qJgwmyzLDWryb_Lv3mgwly1eY3X2fltht3Mry4_L3LWY_40hJBGpOS60_5oPdqMS2D2qiakYGVfBv-M_Ypzg2UbJKJ5BBmeejqPKTLtgNWIJ8YUNXi8Q2sP9p4NMzbuJJc9uKvCdh0ZVBPMXx7drB67wpQyjA5BMTHKYCd1qDxby2rzPRODYM22hV_oPNMkTsXAjo_fD9Kg4yM0mWybu4A8676qMvh4nbrMJCeTy6-eZO2gTEwxkM5HTgZUJvgJKhGMa0tsWOqesDOPrO8Ul0tOcjjvIWaBdMvzVxLkOO1UXilp64fFx0GRvGL5npiI6ZsSrd2BRehPCawf0NiZoe1-UmqghMq7urYFNJ6O218erUSmC8PqiyY_ndd2BmbjVeCooPbCWw_HGmGtJu-t1gOR7vE73qhBW3nY7D_0OJQcMIuGQHZqmp3tz4Cy-aSzJvMh_05P51IkG2tqXAOlO4zRkRvd-_aGRvAMTcp3DS1QXPnbWiXJuLfz-Y8Dmy"
-    AllMight("2022-03-02", 10, 1, "getLocationDimensions", { }, token, res)
+    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDg5NzI2OTMsImlhdCI6MTY0Nzc2MzA5MywidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.d9qT8hqCP5Udv6I0nw2u0H9-uxUcgqPBq6PziAiVcvxlm0NWwrB_FV_i5AMYgZoc_0T-Y55ImPd_6W8C4PidvPk6N3vEmofCU5Pv0Dz-3hEl4xeFn2NggrCmBFEfeAFGSEkuNsE9Wc5n_VsNqnOHrYDX0vkQIBH4sdcfvEpyQJa3HqhxH_SONJG-sXfWtr2cRYPNrUR6sIGvhpCedTlWXGxyxQd4e3AnDEhffxRP-oUq3cxy49t4esLAT97dcszb8VXVK0CGzPxFnQyXs78-ijpnR6qYS8EeEDbqI5x8dRz6Okr7_ILHDyoBHJLW8L-tYnQLui7yVAYnkfs4beG5lbp2HE5ju6dmClJHDdafFedDu7_NitQstfYDV3iZuV7F7_W2XoXeAaarT_6ggT1yDI8FG5dz9edssko68kTpxQghmxbOC39mRq2xoPOgJVF1q9yz8_ksT2CjxEsu8dFVKIKUTvc3FO-dqkoi37OBLrOUzRwmcP840xpp_L9l4VAU"
+    allForOne("2022-03-02", 10, 1, "getTenderMediaDailyTotals", {"locRef": "CHGOUNA","busDt":'2022-03-15'}, token, res)
 }
+token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
+// refreshToken(token)
+// console.log(token);
