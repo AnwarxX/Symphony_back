@@ -748,11 +748,7 @@ module.exports.authorization = async (req, res) => {
               break;
             }
             case "month": {
-<<<<<<< Updated upstream
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-=======
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
->>>>>>> Stashed changes
               console.log(runtime);
        
               break;
@@ -842,6 +838,7 @@ module.exports.authorization = async (req, res) => {
         res.json(x)
     }
 }
+
 module.exports.update = async (req, res) => {
     console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
@@ -916,21 +913,13 @@ module.exports.update = async (req, res) => {
               break;
             }
             case "year": {
-<<<<<<< Updated upstream
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } ${myDate.getMonth() + 1} *`;
-=======
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
->>>>>>> Stashed changes
               console.log(runtime);
        
               break;
             }
             case "month": {
-<<<<<<< Updated upstream
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-=======
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
->>>>>>> Stashed changes
               console.log(runtime);
        
               break;
@@ -955,11 +944,7 @@ module.exports.update = async (req, res) => {
                 break;
               }
               case "apimonth": {
-<<<<<<< Updated upstream
                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-=======
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
->>>>>>> Stashed changes
                 console.log(runtime);
          
                 break;
