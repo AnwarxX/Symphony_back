@@ -617,7 +617,7 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
 });
 job.cancel();
 module.exports.import = async (req, res) => {
-    console.log(req.body.api);
+    console.log(req.body);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
     token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
@@ -925,13 +925,13 @@ module.exports.update = async (req, res) => {
               break;
             }
             case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } ${myDate.getMonth() + 1} *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
               console.log(runtime);
        
               break;
             }
             case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
               console.log(runtime);
        
               break;
