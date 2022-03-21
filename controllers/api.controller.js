@@ -617,7 +617,7 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
 });
 job.cancel();
 module.exports.import = async (req, res) => {
-    console.log(req.body.api);
+    console.log(req.body);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
     await sql.connect(config)
     token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
@@ -925,19 +925,28 @@ module.exports.update = async (req, res) => {
               break;
             }
             case "year": {
+<<<<<<< Updated upstream
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } ${myDate.getMonth() + 1} *`;
+=======
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+>>>>>>> Stashed changes
               console.log(runtime);
        
               break;
             }
             case "month": {
+<<<<<<< Updated upstream
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+=======
+              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+>>>>>>> Stashed changes
               console.log(runtime);
        
               break;
             }
             default:
               break;
+<<<<<<< Updated upstream
         }
         req.body.SunSchedule=runtime
         myDate=new Date(req.body.ApiSchedule)
@@ -960,6 +969,33 @@ module.exports.update = async (req, res) => {
             console.log(runtime);
         
             break;
+=======
+          }
+          req.body.SunSchedule=runtime
+          myDate=new Date(req.body.ApiSchedule)
+          switch (req.body.ApiScheduleStatue) {
+              case "apiday": {//every hour
+                let hour = req.body.ApiSchedule.split(":")[0];
+                let min = req.body.ApiSchedule.split(":")[1];
+                runtime = `0 ${min} ${hour} * * *`
+                console.log(runtime);
+                break;
+              }
+              case "apiyear": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                console.log(runtime);
+         
+                break;
+              }
+              case "apimonth": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+                console.log(runtime);
+         
+                break;
+              }
+              default:
+                break;
+>>>>>>> Stashed changes
             }
             default:
             break;
