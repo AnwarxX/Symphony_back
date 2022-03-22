@@ -57,7 +57,8 @@ appRoutes.post('/mapping', apiController.postMapping);
 appRoutes.post('/PropertySettings', apiController.PropertySettings);
 appRoutes.post('/reviewInterface', apiController.reviewInterface);
 appRoutes.post('/update', apiController.update);
-appRoutes.post('/uploadLicense',allInOne.uploadLicense)
+appRoutes.post('/uploadLicense',allInOne.uploadLicense);
+appRoutes.get('/getURL',apiController.getURL);
 
 
 module.exports = appRoutes;

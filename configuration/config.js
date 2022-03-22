@@ -1,11 +1,12 @@
 //here we eneter the configration for the connection with database by writing the username , password , database name and the
 //server that can access the database 
-
+const fs = require('fs')
+let databaseConn=JSON.parse(fs.readFileSync('configuration/config.txt', 'utf8'))
 const dbConfig = {
-  user: "DEV",
-  password: "P@ssw0rd",
-  server: "192.168.1.78",
-  database: "SimphonyApi",
+  user: databaseConn.user,
+  password: databaseConn.password,
+  server: databaseConn.server,
+  database: databaseConn.database,
   "options": {
     "abortTransactionOnError": true,
     "encrypt": false,

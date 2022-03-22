@@ -12,6 +12,7 @@ const { response } = require('express');
 const qs = require("qs");
 const { json } = require('body-parser');
 const { res } = require('date-and-time');
+const fs = require('fs')
 var status=[];
 let scJop=[]
 
@@ -1231,9 +1232,17 @@ module.exports.PropertySettings = async (req, res) => {
         
     }
 }
+module.exports.getURL = async (req, res) => {
+    try {
+        res.json(JSON.parse(fs.readFileSync('configuration/config.txt', 'utf8')).urlBackend)
+    } catch (error) {
+        res.json(error.message)
+    }
+}
 module.exports.test = async (req, res) => {
-    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDg5NzI2OTMsImlhdCI6MTY0Nzc2MzA5MywidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.d9qT8hqCP5Udv6I0nw2u0H9-uxUcgqPBq6PziAiVcvxlm0NWwrB_FV_i5AMYgZoc_0T-Y55ImPd_6W8C4PidvPk6N3vEmofCU5Pv0Dz-3hEl4xeFn2NggrCmBFEfeAFGSEkuNsE9Wc5n_VsNqnOHrYDX0vkQIBH4sdcfvEpyQJa3HqhxH_SONJG-sXfWtr2cRYPNrUR6sIGvhpCedTlWXGxyxQd4e3AnDEhffxRP-oUq3cxy49t4esLAT97dcszb8VXVK0CGzPxFnQyXs78-ijpnR6qYS8EeEDbqI5x8dRz6Okr7_ILHDyoBHJLW8L-tYnQLui7yVAYnkfs4beG5lbp2HE5ju6dmClJHDdafFedDu7_NitQstfYDV3iZuV7F7_W2XoXeAaarT_6ggT1yDI8FG5dz9edssko68kTpxQghmxbOC39mRq2xoPOgJVF1q9yz8_ksT2CjxEsu8dFVKIKUTvc3FO-dqkoi37OBLrOUzRwmcP840xpp_L9l4VAU"
-    allForOne("2022-03-02", 10, 1, "getTenderMediaDailyTotals", {"locRef": "CHGOUNA","busDt":'2022-03-15'}, token, res)
+    await sql.connect(config)
+    const tables = await sql.query(`SELECT name FROM sys.Tables`);
+    res.json(tables)
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)
