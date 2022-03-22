@@ -8,22 +8,24 @@ var CryptoJS = require("crypto-js");
 
 module.exports.uploadLicense = async (req, res) => {
     try {
+        console.log("ss");
         //used to establish connection between database and the middleware
         await sql.connect(config)
         let license =JSON.parse(req.body.license)
-        let exDate =license.expiryDate
         let token =license.token
-
+        console.log(token);
         var bytes  = CryptoJS.AES.decrypt(token, 'lamiaa');
         var originalText = bytes.toString(CryptoJS.enc.Utf8);
-        console.log(originalText[0].EndDate);
+        console.log("afasf");
+        let exDate =JSON.parse(originalText)[0].EndDate
+        console.log(exDate);
         var date1 = new Date();
         var date2 = new Date(exDate);
-        if(token == undefined || exDate == undefined){
-            res.json("invalid License")
+        if(token == undefined ){
+            res.json({massage:"invalid License"})
         }
         else if(date1.getTime() > date2.getTime()){
-            res.json("license has expired")
+            res.json({massage:"license has expired"})
          }
          else {
 
@@ -47,16 +49,16 @@ module.exports.uploadLicense = async (req, res) => {
 
            }
         }
-        res.json("License Submited")//viewing the data which is array of obecjts which is json 
+        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json 
         }
     } catch (error) {
         let x ;
-        if(error.message.includes("Unexpected ") ){
+        if(error.message.includes("Unexpected") ){
             x="invalid License"
         }
         else {
             x =error.message
-        }
-        res.json(x)
+         }
+        res.json({massage:x})
     }
 }

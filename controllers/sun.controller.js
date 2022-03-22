@@ -18,6 +18,24 @@ const jobSun = schedule.scheduleJob('0 0 0 * * *', async function () {
     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
     console.log(new Date(),"sun");
 });
+module.exports.stop = async (req, res) => {
+    try {
+        jobSun.cancel();
+        res.json("stopped")
+    } catch (error) {
+        res.json(error.message)
+    }
+}
+module.exports.start = async (req, res) => {// dont forget to make this function for real
+    try {
+        await sql.connect(config)
+        const addCase = await sql.query(`SELECT SunSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
+        jobSun.reschedule(addCase.recordset[0].SunSchedule);
+        res.json("done") 
+    } catch (error) {
+        res.json(error.message)
+    }
+}
 module.exports.importSun = async (req, res) => {
 
     // let dates=getDaysArray("2022-02-20","2022-02-23")

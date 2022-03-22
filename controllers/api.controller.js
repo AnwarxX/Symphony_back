@@ -933,7 +933,7 @@ module.exports.update = async (req, res) => {
             case "month": {
               runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
               console.log(runtime);
-       
+
               break;
             }
             default:

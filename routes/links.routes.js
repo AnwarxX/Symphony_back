@@ -43,6 +43,8 @@ appRoutes.get("/importInterface", apiController.importInterface)
 appRoutes.get('/SysData', apiController.SysData);
 appRoutes.get("/stop", apiController.stop)
 appRoutes.get("/start", apiController.start)
+appRoutes.get("/stopSun", sunController.stop)
+appRoutes.get("/startSun", sunController.start)
 // this endpoint used to retrive all num value from  RevenuCenter table
 appRoutes.get('/revenue', apiController.revenue);
 //this endpoint used to send data(table name and column name) from frontend to search in database and get all column values 
