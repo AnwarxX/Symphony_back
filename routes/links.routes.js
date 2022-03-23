@@ -59,6 +59,7 @@ appRoutes.post('/reviewInterface', apiController.reviewInterface);
 appRoutes.post('/update', apiController.update);
 appRoutes.post('/uploadLicense',allInOne.uploadLicense);
 appRoutes.get('/getURL',apiController.getURL);
+appRoutes.get('/getLisence', allInOne.getLisence);
 
 
 module.exports = appRoutes;

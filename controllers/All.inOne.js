@@ -5,6 +5,8 @@ const e = require('cors');
 const sql = require('mssql')//call for using sql module
 const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
 var CryptoJS = require("crypto-js");
+var fs = require('fs');
+const { log } = require('console');
 
 module.exports.uploadLicense = async (req, res) => {
     try {
@@ -30,8 +32,6 @@ module.exports.uploadLicense = async (req, res) => {
          else {
 
         console.log(exDate,token)
-       
-        
         //best to use .getTime() to compare dates
         if(date1.getTime() < date2.getTime()){
            let t = await sql.query(`select * from  license`);
@@ -41,12 +41,9 @@ module.exports.uploadLicense = async (req, res) => {
            }
            else if(t.recordset.length > 0){
             console.log(t.recordset.length,"kjkjj");
-
                //await sql.query(`delete * from license `);
             await sql.query(` UPDATE license set token='${token}' 
-            WHERE token =(SELECT token FROM license)`);
-                
-
+            WHERE token =(SELECT token FROM license)`);   
            }
         }
         res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json 
@@ -60,5 +57,19 @@ module.exports.uploadLicense = async (req, res) => {
             x =error.message
          }
         res.json({massage:x})
+    }
+}
+module.exports.getLisence = async(req,res)=>{
+    try{
+    await sql.connect(config)
+    let license = await sql.query(`select token from license`); 
+    if(license.recordset.length != 0 ){
+         console.log(license.recordset[0].token);
+        res.json(license.recordset[0].token) 
+
+    }
+    }
+    catch(error){
+       res.json(error.message) 
     }
 }
