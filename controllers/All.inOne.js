@@ -32,20 +32,18 @@ module.exports.uploadLicense = async (req, res) => {
         else {
         // console.log(exDate,token)
         //best to use .getTime() to compare dates
-        if(date1.getTime() < date2.getTime()){
            let t = await request.query(`select * from  license`);
            //console.log(t.recordset.length,"kjkjj");
            if(t.recordset.length == 0){
-              await request.query(`insert into  license (token) values('${token}')`);
+              await request.query(`insert into license (token) values('${token}')`);
            }
            else if(t.recordset.length > 0){
             // console.log(t.recordset.length,"kjkjj");
-               //await sql.query(`delete * from license `);
-            await request.query(` UPDATE license set token='${token}' 
-            WHERE token =(SELECT token FROM license)`);   
+               //await request.query(`delete * from license `);
+            await request.query(` UPDATE license set token='${token}'
+            WHERE token =(SELECT token FROM license)`);  
            }
-        }
-        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json 
+        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json
         }
     } catch (error) {
         let x ;
