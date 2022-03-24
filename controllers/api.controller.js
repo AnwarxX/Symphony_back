@@ -613,6 +613,24 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
     allForTwo(dat, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
 });
 job.cancel();
+sched()
+async function sched() {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    interfaceCodes=interfaceCodes.recordset
+    for (let i = 0; i < interfaceCodes.length; i++) {
+        console.log(interfaceCodes[i].interfaceCode);
+        let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${interfaceCodes[i].interfaceCode}`)
+        apiSch.recordset[0].ApiSchedule='* * * * * *'
+        console.log(apiSch.recordset[0].ApiSchedule );
+        scJop.push(
+            schedule.scheduleJob(apiSch.recordset[0].ApiSchedule, async function () {
+                console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
+            })
+        )
+    }
+}
 module.exports.import = async (req, res) => {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
@@ -1109,7 +1127,7 @@ module.exports.stop = async (req, res) => {
         res.json(error.message)
     }
 }
-module.exports.start = async (req, res) => {// dont forget to make this function for real
+module.exports.start = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
@@ -1273,8 +1291,39 @@ module.exports.getURL = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    const tables = await request.query(`SELECT name FROM sys.Tables`);
-    res.json(tables)
+    //----------------------------stop dynamic schedule----------------------------//
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    interfaceCodes=interfaceCodes.recordset
+    let x;
+    for (let i = 0; i < interfaceCodes.length; i++) {
+        console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
+        if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
+            x=i
+        }
+    }
+    console.log(x);
+    scJop[x].cancel()
+    res.json("tables")
+    //----------------------------stop dynamic schedule----------------------------//
+    //----------------------------start dynamic schedule----------------------------//
+    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    // let request = new sql.Request(sqlPool)
+    // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    // let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${req.body.interfaceCode}`)
+    // interfaceCodes=interfaceCodes.recordset
+    // let x;
+    // for (let i = 0; i < interfaceCodes.length; i++) {
+    //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
+    //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
+    //         x=i
+    //     }
+    // }
+    // apiSch.recordset[0].ApiSchedule="0/3 * * * * *"
+    // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
+    // res.json("tables")
+    //----------------------------start dynamic schedule----------------------------//
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)
