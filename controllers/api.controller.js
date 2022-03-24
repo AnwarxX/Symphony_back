@@ -5,6 +5,7 @@ const appRoutes = require('express').Router(); //call for Router method inside e
 const axios = require('axios');//call for using xios module
 const sql = require('mssql')//call for using sql module
 const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
+let mssql = require('../configuration/mssql-pool-management.js')
 //node-schedule allows us to schedule jobs (arbitrary functions) for execution at specific dates/time.
 const schedule = require('node-schedule');
 const date = require('date-and-time');//call for using date-and-time module 
@@ -15,10 +16,8 @@ const { res } = require('date-and-time');
 const fs = require('fs')
 var status=[];
 let scJop=[]
-
 async function guestChecks(dat, limit, start, token, res) {
     let resp;
-    await sql.connect(config)
     console.log("guestChecks",start);
     try {
         //used to establish connection between database and the middleware
@@ -60,7 +59,7 @@ async function guestChecks(dat, limit, start, token, res) {
             }
             // console.log(columns);
             // console.log(data);
-            const media = await sql.query(
+            const media = await request.query(
                 `IF NOT EXISTS (SELECT * FROM getGuestChecks
                     WHERE ${check.slice(0, -4)})
                     BEGIN
@@ -68,11 +67,11 @@ async function guestChecks(dat, limit, start, token, res) {
                     VALUES (${data.slice(0, -1)})
                     END`);
             //this query is used to insert the vales in thier columns
-            // const media = await sql.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+            // const media = await request.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
         }
         
         if (res==undefined) {
-            let status = await sql.query(
+            let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE ApiName='getGuestChecks' and Date='${dat}' and Status='Successful')
                     BEGIN
@@ -97,7 +96,7 @@ async function guestChecks(dat, limit, start, token, res) {
             console.log(dat,"field");
             // status.push({API:"Guest Checks",date:dat,stats:'field'})
             if (res==undefined){
-                let status = await sql.query(
+                let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed')
                     BEGIN
@@ -113,7 +112,6 @@ async function guestChecks(dat, limit, start, token, res) {
 }
 async function guestChecksDetails(dat, limit, start, token, res) {
     console.log("guestChecksDetails");
-    await sql.connect(config)
     console.log("guestChecksDetails",start);
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
@@ -178,20 +176,20 @@ async function guestChecksDetails(dat, limit, start, token, res) {
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
-                const addCase = await sql.query(
+                const addCase = await request.query(
                     `IF NOT EXISTS (SELECT * FROM GuestChecksLineDetails
                         WHERE ${check.slice(0, -4)})
                         BEGIN
                         INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1)})
                         VALUES (${data.slice(0, -1)})
                         END`);
-                // const addCase = await sql.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
+                // const addCase = await request.query(`INSERT INTO GuestChecksLineDetails (${columns.slice(0, -1).split(" ").join("")}) VALUES (${data.slice(0, -1)})`);
             }
         // }
         // status.push({API:"guestChecksDetails",date:dat,status:'success'})
         
         if (res==undefined) {
-            let status = await sql.query(
+            let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful')
                     BEGIN
@@ -215,7 +213,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
         else {
             // status.push({api:'guestChecksDetails',date:dat,stats:'field'})
             if (res==undefined)
-                await sql.query(
+                await request.query(
                     `IF NOT EXISTS (SELECT * FROM guestChecksDetails
                         WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed')
                         BEGIN
@@ -228,7 +226,6 @@ async function guestChecksDetails(dat, limit, start, token, res) {
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
 async function allForOne(dat, limit, start, apiName, body, token, res) {
-    await sql.connect(config)
     console.log(apiName,start);
     // console.log(body);
     try {
@@ -282,18 +279,18 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
-                const addCase = await sql.query(
+                const addCase = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
                         BEGIN
                         INSERT INTO ${apiName} (${columns.slice(0, -1)})
                         VALUES (${data.slice(0, -1)})
                         END`);
-                // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+                // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                let status = await sql.query(
+                let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                         WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
                         BEGIN
@@ -325,7 +322,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                     INSERT INTO ImportStatus (ApiName,Date,Status)
                     VALUES (${apiName},'${dat}','Failed')
                     END`);
-                await sql.query(
+                await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
                     BEGIN
@@ -339,7 +336,6 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
     }
 }
 async function allForTwo(dat, limit, start, apiName, body, token, res) {
-    await sql.connect(config)
     console.log(apiName,start);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
@@ -384,18 +380,18 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
-                const addCase = await sql.query(
+                const addCase = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
                         BEGIN
                         INSERT INTO ${apiName} (${columns.slice(0, -1)})
                         VALUES (${data.slice(0, -1)})
                         END`);
-                // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+                // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                let status = await sql.query(
+                let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                         WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
                         BEGIN
@@ -420,7 +416,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
-                await sql.query(
+                await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
                     BEGIN
@@ -435,7 +431,6 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
 }
 async function AllMight(dat, limit, start, apiName, body, token, res) {
     let z=true; 
-    await sql.connect(config)
     console.log(body);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
@@ -512,19 +507,19 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
-            //     const addCase = await sql.query(
+            //     const addCase = await request.query(
             //         `IF NOT EXISTS (SELECT * FROM ${apiName}
             //             WHERE ${check.slice(0, -4)})
             //             BEGIN
             //             INSERT INTO ${apiName} (${columns.slice(0, -1)})
             //             VALUES (${data.slice(0, -1)})
             //             END`);
-            //     // const addCase = await sql.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
+            //     // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
             // console.log(apiName,start);
             // if (res==undefined) {
-            //     let status = await sql.query(
+            //     let status = await request.query(
             //         `IF NOT EXISTS (SELECT * FROM ImportStatus
             //             WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
             //             BEGIN
@@ -553,7 +548,7 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
-                // await sql.query(
+                // await request.query(
                     // `IF NOT EXISTS (SELECT * FROM ImportStatus
                     // WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
                     // BEGIN
@@ -568,8 +563,7 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
 }
 async function refreshToken(token) {
     try {
-        await sql.connect(config)
-        x=await sql.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
+        x=await request.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
         console.log(x);
         let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
             scope: "openid", //gave the values directly for testing
@@ -586,7 +580,7 @@ async function refreshToken(token) {
                 'content-type': 'application/x-www-form-urlencoded'
             }
         , withCredentials: true });
-        y=await sql.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
+        y=await request.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
         console.log("refreshed");
         console.log(resp2.data.id_token);
         token= resp2.data.id_token;
@@ -595,13 +589,15 @@ async function refreshToken(token) {
     }
 }
 const job = schedule.scheduleJob('* * * * * *', async function () {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     status = [];
     let dt = new Date();
     dt.setHours(dt.getHours() + 2);
     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-    await sql.connect(config)
-    const token = await sql.query(`SELECT token FROM interfaceDefinition WHERE interfaceCode=43`);
-    console.log(dat);
+    let token = await request.query(`SELECT token FROM interfaceDefinition WHERE interfaceCode=43`);
+    // console.log(token);
+    // console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
     allForOne(dat, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
     allForOne(dat, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
     allForOne(dat, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": dat }, token.recordset[0].token)
@@ -618,10 +614,11 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
 });
 job.cancel();
 module.exports.import = async (req, res) => {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     console.log(req.body);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
-    await sql.connect(config)
-    token=await sql.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
+    token=await request.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
     // console.log(token.recordset[0].token); 
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
@@ -660,9 +657,10 @@ module.exports.import = async (req, res) => {
 }
 module.exports.codes = async (req, res) => {
     try {
-        await sql.connect(config)
-        const interfaseCode = await sql.query(`SELECT interfaceCode From  interfaceDefinition `);//retrive all interface code
-        const mappingCode = await sql.query(`SELECT MappingCode FROM MappingDefinition `);//retrive all mapping code
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCode = await request.query(`SELECT interfaceCode From  interfaceDefinition `);//retrive all interface code
+        const mappingCode = await request.query(`SELECT MappingCode FROM MappingDefinition `);//retrive all mapping code
        res.json({mapping:mappingCode.recordset ,intreface:interfaseCode.recordset})
     } catch (error) {
         res.json(error.message)
@@ -670,11 +668,12 @@ module.exports.codes = async (req, res) => {
 }
 module.exports.interfaceCode = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
-        const interfacedata = await sql.query(`SELECT interfaceCode From  interfaceDefinition `)
+        const interfacedata = await request.query(`SELECT interfaceCode From  interfaceDefinition `)
           //used to establish connection between database and the middleware
-          const apidata = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`)
+          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`)
         res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
     } catch (error) {
         res.json(error.message)
@@ -696,6 +695,8 @@ module.exports.authorization = async (req, res) => {
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
             username, //gave the values directly for testing
             password,
@@ -738,8 +739,6 @@ module.exports.authorization = async (req, res) => {
             },
             charset: 'utf8'
           };
-        await sql.connect(dbConfig)
-        await  sql.close() 
 
         token=resp2.data.id_token
         let runtime;
@@ -825,9 +824,8 @@ module.exports.authorization = async (req, res) => {
         //         INSERT INTO interfaceDefinition (${columns}token,refreshToken)
         //         VALUES (${data}'${token}','${refresh_token}')
         //         END`);
-     await sql.connect(config)
 
-        const addCase = await sql.query(
+        const addCase = await request.query(
             `IF NOT EXISTS (SELECT * FROM interfaceDefinition
                 WHERE ${check.slice(0, -4)})
                 BEGIN
@@ -835,7 +833,7 @@ module.exports.authorization = async (req, res) => {
                 VALUES (${data}'${token}','${refresh_token}')
                 END`);
          job.reschedule(req.body.ApiSchedule)     
-        //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+        //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         let x=[]
@@ -862,6 +860,8 @@ module.exports.update = async (req, res) => {
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
             username, //gave the values directly for testing
             password,
@@ -904,10 +904,8 @@ module.exports.update = async (req, res) => {
             },
             charset: 'utf8'
           };
-        await sql.connect(dbConfig)
         
-        //console.log(sql.connect(dbConfig),"kkk");
-        await  sql.close() 
+        //console.log(request.connect(dbConfig),"kkk");
 
         token=resp2.data.id_token
         let runtime;
@@ -993,13 +991,12 @@ module.exports.update = async (req, res) => {
         console.log(check);
         
 
-     await sql.connect(config)
-        const addCase = await sql.query(
+        const addCase = await request.query(
             `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
             where interfaceCode=${req.body.interfaceCode}`);
 
         job.reschedule(req.body.ApiSchedule)
-        //await sql.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+        //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
         res.json("Submitted successfully");
     } catch (error) {
         let x=[]
@@ -1016,11 +1013,12 @@ module.exports.update = async (req, res) => {
 }
 module.exports.delete = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         console.log(req.body);
         //query to delete mapping data from Mapping table  in  database 
-        const values = await sql.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
+        const values = await request.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
         res.json(req.body)//viewing the data which is array of obecjts which is json 
     } catch (error) {
         res.json(error.message)
@@ -1028,10 +1026,11 @@ module.exports.delete = async (req, res) => {
 }
 module.exports.deleteInterface = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //query to delete PropertySettings data from Mapping table  in  database 
-        const values = await sql.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
+        const values = await request.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
         res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
     } catch (error) {
         res.json(error.message)
@@ -1039,10 +1038,11 @@ module.exports.deleteInterface = async (req, res) => {
 }
 module.exports.reviewInterface = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //query to review PropertySettings data from Mapping table  in  database 
-        const values = await sql.query(`select * from interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+        const values = await request.query(`select * from interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
         res.json(values.recordset[0]);
     } catch (error) {
         res.json(error.message)
@@ -1050,8 +1050,9 @@ module.exports.reviewInterface = async (req, res) => {
 }
 module.exports.importInterface = async (req, res) => {
     try {
-        await sql.connect(config)
-        const interfaseCode = await sql.query(`SELECT [BU],[interfaceCode] ,[MappingCode] FROM [SimphonyApi].[dbo].[PropertySettings]`);//retrive all interface code
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCode = await request.query(`SELECT [BU],[interfaceCode] ,[MappingCode] FROM [SimphonyApi].[dbo].[PropertySettings]`);//retrive all interface code
        res.json(interfaseCode.recordset)
     } catch (error) {
         res.json(error.message)
@@ -1059,16 +1060,17 @@ module.exports.importInterface = async (req, res) => {
 }
 module.exports.SysData = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         let data = []//an empty array used to push all column names with it's table name
         
-        const tables = await sql.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`);//retrive all tables name
+        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`);//retrive all tables name
         console.log(tables);
         for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
             let x = {}//object that will hold each table name with it's columns
             //retrive all columns name
-            const columns = await sql.query(`SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('${tables.recordset[i].name}')`);
+            const columns = await request.query(`SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('${tables.recordset[i].name}')`);
             x["TableName"] = tables.recordset[i].name// add an new element to the object with the table name
             x["ColumnNames"] = columns.recordset// add an new element to the object with an array of all the column name to that table
             data.push(x)//push the object to the array
@@ -1089,8 +1091,9 @@ module.exports.stop = async (req, res) => {
 }
 module.exports.start = async (req, res) => {// dont forget to make this function for real
     try {
-        await sql.connect(config)
-        const addCase = await sql.query(`SELECT ApiSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const addCase = await request.query(`SELECT ApiSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
          job.reschedule(addCase.recordset[0].ApiSchedule);
         res.json("done") 
     } catch (error) {
@@ -1099,10 +1102,11 @@ module.exports.start = async (req, res) => {// dont forget to make this function
 }
 module.exports.revenue = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //retrive all num value from  RevenuCenter table
-        const revenue = await sql.query(`SELECT num FROM RevenuCenter `);
+        const revenue = await request.query(`SELECT num FROM getRevenueCenterDimensions `);
         //used to close the connection between database and the middleware
         res.json(revenue.recordset)//viewing the data which is array of obecjts which is json 
     } catch (error) {
@@ -1111,10 +1115,11 @@ module.exports.revenue = async (req, res) => {
 }
 module.exports.SysDataHandler = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //retrive a specific column values requested from the front end from a specific table
-        const values = await sql.query(`SELECT distinct ${req.body.column} FROM ${req.body.table}`);
+        const values = await request.query(`SELECT distinct ${req.body.column} FROM ${req.body.table}`);
     
         res.json(values.recordset)//viewing the data which is array of obecjts which is json 
     
@@ -1125,10 +1130,11 @@ module.exports.SysDataHandler = async (req, res) => {
 }
 module.exports.getMapping = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //retrive all mapping data from Mapping table in database
-        const mapp = await sql.query(`SELECT * FROM Mapping`);
+        const mapp = await request.query(`SELECT * FROM Mapping`);
         //used to close the connection between database and the middleware
         res.json(mapp.recordset)//viewing the data which is array of obecjts which is json 
     } catch (error) {
@@ -1137,8 +1143,9 @@ module.exports.getMapping = async (req, res) => {
 }
 module.exports.postMapping = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         console.log(req.body);
         //to change the level and Revenue from empty string to null as it should be int 
     
@@ -1148,10 +1155,10 @@ module.exports.postMapping = async (req, res) => {
                 req.body[i].RevenuCenter = null
             }
               //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
-        //const val = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
+        //const val = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
     
-        //  const values = await sql.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
-         const values = await sql.query(
+        //  const values = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
+         const values = await request.query(
             `IF NOT EXISTS (SELECT * FROM Mapping
                 WHERE MappingCode='${req.body[i].MappingCode}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
                 BEGIN
@@ -1159,14 +1166,14 @@ module.exports.postMapping = async (req, res) => {
                 VALUES ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
                 END`)
         }
-        const val = await sql.query(
+        const val = await request.query(
             `IF NOT EXISTS (SELECT * FROM MappingDefinition
                 WHERE MappingCode='${req.body[0].MappingCode}' and Description='${req.body[0].Description}')
                 BEGIN
                 INSERT INTO MappingDefinition (MappingCode,Description)
                 VALUES ('${req.body[0].MappingCode}','${req.body[0].Description}')
                 END`)
-        // const val = await sql.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
+        // const val = await request.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
         
     console.log(req.body[0].MappingCode);
     
@@ -1179,10 +1186,11 @@ module.exports.postMapping = async (req, res) => {
 }
 module.exports.PropertySettings = async (req, res) => {
     try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
-        await sql.connect(config)
         //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
-        // const values = await sql.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+        // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
         console.log(
             `IF NOT EXISTS (SELECT * FROM PropertySettings
                 WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
@@ -1190,7 +1198,7 @@ module.exports.PropertySettings = async (req, res) => {
                 INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
                 VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
                 END`);
-        const values = await sql.query(
+        const values = await request.query(
             `IF NOT EXISTS (SELECT * FROM PropertySettings
                 WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
                 BEGIN
@@ -1198,10 +1206,9 @@ module.exports.PropertySettings = async (req, res) => {
                 VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
                 END`)
     
-        await sql.connect(config)
     
-      const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
-      await  sql.close() 
+      const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+      await  request.close() 
       console.log(sunCon,sunCon.recordset[0].SunSchedule);
       let sunConuser =sunCon.recordset[0].SunUser;
       let sunConSunPassword =sunCon.recordset[0].SunPassword
@@ -1220,10 +1227,9 @@ module.exports.PropertySettings = async (req, res) => {
             },
             charset: 'utf8'
           };
-        await sql.connect(dbConfig)
         jobSun.reschedule(sunCon.recordset[0].SunSchedule)     
-        //await sql.query(``)
-        await  sql.close() 
+        //await request.query(``)
+        await  request.close() 
         //used to close the connection between database and the middleware
         res.json(req.body)//viewing the data which is array of obecjts which is json
     } catch (error) {
@@ -1239,8 +1245,7 @@ module.exports.getURL = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    await sql.connect(config)
-    const tables = await sql.query(`SELECT name FROM sys.Tables`);
+    const tables = await request.query(`SELECT name FROM sys.Tables`);
     res.json(tables)
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
