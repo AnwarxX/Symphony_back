@@ -32,26 +32,24 @@ module.exports.uploadLicense = async (req, res) => {
         else {
         // console.log(exDate,token)
         //best to use .getTime() to compare dates
-<<<<<<< HEAD
-           let t = await sql.query(`select * from  license`);
-           //console.log(t.recordset.length,"kjkjj");
-           if(t.recordset.length == 0){
-              await sql.query(`insert into license (token) values('${token}')`);
-=======
         if(date1.getTime() < date2.getTime()){
+              await sql.query(`insert into license (token) values('${token}')`);
+           if(t.recordset.length == 0){
+           //console.log(t.recordset.length,"kjkjj");
+           let t = await sql.query(`select * from  license`);
            let t = await request.query(`select * from  license`);
            //console.log(t.recordset.length,"kjkjj");
            if(t.recordset.length == 0){
               await request.query(`insert into  license (token) values('${token}')`);
->>>>>>> main
+              await request.query(`insert into license (token) values('${token}')`);
            }
            else if(t.recordset.length > 0){
             // console.log(t.recordset.length,"kjkjj");
-               //await sql.query(`delete * from license `);
-            await request.query(` UPDATE license set token='${token}' 
-            WHERE token =(SELECT token FROM license)`);   
+               //await request.query(`delete * from license `);
+            await request.query(` UPDATE license set token='${token}'
+            WHERE token =(SELECT token FROM license)`);  
            }
-        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json 
+        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json
         }
     } catch (error) {
         let x ;
@@ -66,15 +64,14 @@ module.exports.uploadLicense = async (req, res) => {
 }
 module.exports.getLisence = async(req,res)=>{
     try{
-<<<<<<< HEAD
-    await sql.connect(config)
-
-    let license = await sql.query(`select token from license`); 
-=======
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
     let license = await request.query(`select token from license`); 
->>>>>>> main
+    let request = new sql.Request(sqlPool)
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let license = await sql.query(`select token from license`); 
+    await sql.connect(config)
+    let license = await request.query(`select token from license`); 
+    let request = new sql.Request(sqlPool)
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     if(license.recordset.length != 0 ){
         //  console.log(license.recordset[0].token);
          res.json(license.recordset[0].token) 
