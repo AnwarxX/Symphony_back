@@ -12,7 +12,8 @@ module.exports.uploadLicense = async (req, res) => {
     try {
         console.log("ss");
         //used to establish connection between database and the middleware
-        await sql.connect(config)
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
         let license =JSON.parse(req.body.license)
         let token =license.token
         console.log(token);
@@ -34,15 +35,15 @@ module.exports.uploadLicense = async (req, res) => {
         console.log(exDate,token)
         //best to use .getTime() to compare dates
         if(date1.getTime() < date2.getTime()){
-           let t = await sql.query(`select * from  license`);
+           let t = await request.query(`select * from  license`);
            //console.log(t.recordset.length,"kjkjj");
            if(t.recordset.length == 0){
-              await sql.query(`insert into  license (token) values('${token}')`);
+              await request.query(`insert into  license (token) values('${token}')`);
            }
            else if(t.recordset.length > 0){
             console.log(t.recordset.length,"kjkjj");
                //await sql.query(`delete * from license `);
-            await sql.query(` UPDATE license set token='${token}' 
+            await request.query(` UPDATE license set token='${token}' 
             WHERE token =(SELECT token FROM license)`);   
            }
         }
@@ -61,8 +62,9 @@ module.exports.uploadLicense = async (req, res) => {
 }
 module.exports.getLisence = async(req,res)=>{
     try{
-    await sql.connect(config)
-    let license = await sql.query(`select token from license`); 
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let license = await request.query(`select token from license`); 
     if(license.recordset.length != 0 ){
          console.log(license.recordset[0].token);
         res.json(license.recordset[0].token) 
