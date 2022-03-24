@@ -13,6 +13,7 @@ const qs = require("qs")
 const apiController=require('../controllers/api.controller')
 const sunController=require('../controllers/sun.controller');
 const allInOne =require('../controllers/All.inOne')
+const validation =require('../controllers/validation.controller')
 const req = require('express/lib/request');
 appRoutes.post("/import", apiController.import)
 appRoutes.get("/loc",async(req,res)=>{
@@ -29,15 +30,15 @@ appRoutes.get("/loc",async(req,res)=>{
 console.log(resp);
 res.json(resp.data)
 })
-appRoutes.post("/importSun", sunController.importSun)
+appRoutes.post("/importSun",validation.importSun, sunController.importSun)//donr
 appRoutes.get("/codes", apiController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
-appRoutes.get("/", apiController.test)
-appRoutes.post("/authorization", apiController.authorization)
+appRoutes.post("/",validation.importSun, apiController.test)//done
+appRoutes.post("/authorization",validation.authorization, apiController.authorization)//
 appRoutes.get("/sunCon", async (req, res) => {
 })
-appRoutes.post('/delete', apiController.delete);
-appRoutes.post('/deleteInterface', apiController.deleteInterface);
+appRoutes.post('/delete',validation.delete, apiController.delete);//
+appRoutes.post('/deleteInterface',validation.deleteInterface, apiController.deleteInterface);//
 appRoutes.get("/importInterface", apiController.importInterface)
 //this endpoint used to retrive all the tables name and their columns
 appRoutes.get('/SysData', apiController.SysData);
@@ -48,17 +49,18 @@ appRoutes.get("/startSun", sunController.start)
 // this endpoint used to retrive all num value from  RevenuCenter table
 appRoutes.get('/revenue', apiController.revenue);
 //this endpoint used to send data(table name and column name) from frontend to search in database and get all column values 
-appRoutes.post('/SysDataHandler', apiController.SysDataHandler);
+appRoutes.post('/SysDataHandler', apiController.SysDataHandler);//
 // this endpoint used to retrive all mapping data from Mapping table in database
 appRoutes.get('/mapping', apiController.getMapping);
 //this endpoint used to send mapping data(mapp ,value,Revenue,level,inbut) from frontend and insert it in  database 
-appRoutes.post('/mapping', apiController.postMapping);
+appRoutes.post('/mapping',validation.mapping, apiController.postMapping);//
 //this endpoint used to send  Property data(BU,JournalType,Revenue,level,Currencycode) from frontend and insert it in  database 
-appRoutes.post('/PropertySettings', apiController.PropertySettings);
-appRoutes.post('/reviewInterface', apiController.reviewInterface);
-appRoutes.post('/update', apiController.update);
-appRoutes.post('/uploadLicense',allInOne.uploadLicense);
+appRoutes.post('/PropertySettings',validation.PropertySettings, apiController.PropertySettings);//
+appRoutes.post('/reviewInterface',validation.reviewInterface, apiController.reviewInterface);//
+appRoutes.post('/update',validation.update, apiController.update);//
+appRoutes.post('/uploadLicense',allInOne.uploadLicense);//
 appRoutes.get('/getURL',apiController.getURL);
 appRoutes.get('/getLisence', allInOne.getLisence);
+
 
 module.exports = appRoutes;

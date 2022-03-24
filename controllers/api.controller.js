@@ -694,158 +694,162 @@ module.exports.authorization = async (req, res) => {
     let SunPassword = req.body.SunPassword
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
-            username, //gave the values directly for testing
-            password,
-            orgname
-        }), {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/x-www-form-urlencoded',
-                'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
-            }
-        , withCredentials: true });
-        let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
-        let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
-            scope: "openid", //gave the values directly for testing
-            grant_type: "authorization_code",
-            client_id: clientId,
-            code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
-            code: redirectUrlCode,
-            redirect_url: "apiaccount://callback"
-        }), {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/x-www-form-urlencoded'
-            }
-        , withCredentials: true });
-        const dbConfig = {
-            user: SunUser,
-            password: SunPassword,
-            server: Sunserver,
-            database: SunDatabase,
-            "options": {
-              "abortTransactionOnError": true,
-              "encrypt": false,
-              "enableArithAbort": true,
-              trustServerCertificate: true
-            },
-            charset: 'utf8'
-          };
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
+                username, //gave the values directly for testing
+                password,
+                orgname
+            }), {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
+                }
+            , withCredentials: true });
+            let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
+            let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
+                scope: "openid", //gave the values directly for testing
+                grant_type: "authorization_code",
+                client_id: clientId,
+                code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
+                code: redirectUrlCode,
+                redirect_url: "apiaccount://callback"
+            }), {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/x-www-form-urlencoded'
+                }
+            , withCredentials: true });
+            const dbConfig = {
+                user: SunUser,
+                password: SunPassword,
+                server: Sunserver,
+                database: SunDatabase,
+                "options": {
+                "abortTransactionOnError": true,
+                "encrypt": false,
+                "enableArithAbort": true,
+                trustServerCertificate: true
+                },
+                charset: 'utf8'
+            };
 
-        token=resp2.data.id_token
-        let runtime;
-        let myDate=new Date(req.body.SunSchedule)
-        switch (req.body.SunScheduleStatue) {
-            case "day": {//every hour
-       
-              let hour = req.body.SunSchedule.split(":")[0];
-              let min = req.body.SunSchedule.split(":")[1];
-              runtime = `0 ${min} ${hour} * * *`
-              console.log(runtime);
-              break;
-            }
-            case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-              console.log(runtime);
-       
-              break;
-            }
-            case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-              console.log(runtime);
-       
-              break;
-            }
-            default:
-              break;
-          }
-          req.body.SunSchedule=runtime
-          myDate=new Date(req.body.ApiSchedule)
-          switch (req.body.ApiScheduleStatue) {
-              case "apiday": {//every hour
-                let hour = req.body.ApiSchedule.split(":")[0];
-                let min = req.body.ApiSchedule.split(":")[1];
+            token=resp2.data.id_token
+            let runtime;
+            let myDate=new Date(req.body.SunSchedule)
+            switch (req.body.SunScheduleStatue) {
+                case "day": {//every hour
+        
+                let hour = req.body.SunSchedule.split(":")[0];
+                let min = req.body.SunSchedule.split(":")[1];
                 runtime = `0 ${min} ${hour} * * *`
                 console.log(runtime);
                 break;
-              }
-              case "apiyear": {
+                }
+                case "year": {
                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
                 console.log(runtime);
-         
-                break;
-              }
-              case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
-                console.log(runtime);
-         
-                break;
-              }
-              default:
-                break;
-            }
-        req.body.ApiSchedule=runtime
-        let  refresh_token =resp2.data.refresh_token
-        let columns = ""
-        let data = ""
-        let check=""
-        for (let j = 0; j < Object.keys(req.body).length; j++) {
-            columns += Object.keys(req.body)[j] + ','
-            // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-            if ((req.body[Object.keys(req.body)[j]] == null)) {
-                check+=Object.keys(req.body)[j]+"=0 and "
-                data += "0,"
-            }
-            else if (typeof (req.body[Object.keys(req.body)[j]]) == "number") {
-                check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" and "
-                data += req.body[Object.keys(req.body)[j]] + ","
-            }
-            else{
-                check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" and "
-                data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
-            }
-        }
         
-        console.log(columns);
-        console.log(data);
-        console.log(check);
-        // console.log(
-        //     `IF NOT EXISTS (SELECT * FROM interfaceDefinition
-        //         WHERE ${check.slice(0, -4)})
-        //         BEGIN
-        //         INSERT INTO interfaceDefinition (${columns}token,refreshToken)
-        //         VALUES (${data}'${token}','${refresh_token}')
-        //         END`);
+                break;
+                }
+                case "month": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+                console.log(runtime);
+        
+                break;
+                }
+                default:
+                break;
+            }
+            req.body.SunSchedule=runtime
+            myDate=new Date(req.body.ApiSchedule)
+            switch (req.body.ApiScheduleStatue) {
+                case "apiday": {//every hour
+                    let hour = req.body.ApiSchedule.split(":")[0];
+                    let min = req.body.ApiSchedule.split(":")[1];
+                    runtime = `0 ${min} ${hour} * * *`
+                    console.log(runtime);
+                    break;
+                }
+                case "apiyear": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                    console.log(runtime);
+            
+                    break;
+                }
+                case "apimonth": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+                    console.log(runtime);
+            
+                    break;
+                }
+                default:
+                    break;
+                }
+            req.body.ApiSchedule=runtime
+            let  refresh_token =resp2.data.refresh_token
+            let columns = ""
+            let data = ""
+            let check=""
+            for (let j = 0; j < Object.keys(req.body).length; j++) {
+                columns += Object.keys(req.body)[j] + ','
+                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+                if ((req.body[Object.keys(req.body)[j]] == null)) {
+                    check+=Object.keys(req.body)[j]+"=0 and "
+                    data += "0,"
+                }
+                else if (typeof (req.body[Object.keys(req.body)[j]]) == "number") {
+                    check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" and "
+                    data += req.body[Object.keys(req.body)[j]] + ","
+                }
+                else{
+                    check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" and "
+                    data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+                }
+            }
+            
+            console.log(columns);
+            console.log(data);
+            console.log(check);
+            // console.log(
+            //     `IF NOT EXISTS (SELECT * FROM interfaceDefinition
+            //         WHERE ${check.slice(0, -4)})
+            //         BEGIN
+            //         INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+            //         VALUES (${data}'${token}','${refresh_token}')
+            //         END`);
 
-        const addCase = await request.query(
-            `IF NOT EXISTS (SELECT * FROM interfaceDefinition
-                WHERE ${check.slice(0, -4)})
-                BEGIN
-                INSERT INTO interfaceDefinition (${columns}token,refreshToken)
-                VALUES (${data}'${token}','${refresh_token}')
-                END`);
-         job.reschedule(req.body.ApiSchedule)     
-        //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
-        res.json("Submitted successfully");
-    } catch (error) {
-        let x=[]
-        if(error.message.includes(400))
-            x.push("Invalid Client ID")
-        if(error.message.includes(401)){
-            x.push("Invalid username ,password or enterprise name")
+            const addCase = await request.query(
+                `IF NOT EXISTS (SELECT * FROM interfaceDefinition
+                    WHERE ${check.slice(0, -4)})
+                    BEGIN
+                    INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+                    VALUES (${data}'${token}','${refresh_token}')
+                    END`);
+            job.reschedule(req.body.ApiSchedule)     
+            //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+            res.json("Submitted successfully");
+        } catch (error) {
+            let x=[]
+            if(error.message.includes(400))
+                x.push("Invalid Client ID")
+            if(error.message.includes(401)){
+                x.push("Invalid username ,password or enterprise name")
+            }
+            if(error.message.includes('connect'))
+                x.push(error.message)
+            res.json(x)
         }
-        if(error.message.includes('connect'))
-            x.push(error.message)
-        res.json(x)
-    }
+    else
+        res.json(errors)
 }
 module.exports.update = async (req, res) => {
     console.log(req.body);
@@ -859,194 +863,210 @@ module.exports.update = async (req, res) => {
     let SunPassword = req.body.SunPassword
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
-            username, //gave the values directly for testing
-            password,
-            orgname
-        }), {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/x-www-form-urlencoded',
-                'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
-            }
-        , withCredentials: true });
-        let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
-        let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
-            scope: "openid", //gave the values directly for testing
-            grant_type: "authorization_code",
-            client_id: clientId,
-            code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
-            code: redirectUrlCode,
-            redirect_url: "apiaccount://callback"
-        }), {
-            headers: {
-                // 'application/json' is the modern content-type for JSON, but some
-                // older servers may use 'text/json'.
-                // See: http://bit.ly/text-json
-                'content-type': 'application/x-www-form-urlencoded'
-            }
-        , withCredentials: true });
-        const dbConfig = {
-            user: SunUser,
-            password: SunPassword,
-            server: Sunserver,
-            database: SunDatabase,
-            "options": {
-              "abortTransactionOnError": true,
-              "encrypt": false,
-              "enableArithAbort": true,
-              trustServerCertificate: true
-            },
-            charset: 'utf8'
-          };
-        
-        //console.log(request.connect(dbConfig),"kkk");
-
-        token=resp2.data.id_token
-        let runtime;
-        console.log(token);
-        let myDate=new Date(req.body.SunSchedule)
-        switch (req.body.SunScheduleStatue) {
-            case "day": {//every hour
-       
-              let hour = req.body.SunSchedule.split(":")[0];
-              let min = req.body.SunSchedule.split(":")[1];
-              console.log("hour",hour);
-              console.log("min",min);
-              runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
-              console.log(runtime);
-              break;
-            }
-            case "year": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-              console.log(runtime);
-       
-              break;
-            }
-            case "month": {
-              runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
-              console.log(runtime);
-
-              break;
-            }
-            default:
-              break;
-        }
-        req.body.SunSchedule=runtime
-        myDate=new Date(req.body.ApiSchedule)
-        switch (req.body.ApiScheduleStatue) {
-            case "apiday": {//every hour
-            let hour = req.body.ApiSchedule.split(":")[0];
-            let min = req.body.ApiSchedule.split(":")[1];
-            runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
-            console.log(runtime);
-            break;
-            }
-            case "apiyear": {
-            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-            console.log(runtime);
-        
-            break;
-            }
-            case "apimonth": {
-            runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-            console.log(runtime);
-        
-            break;
-            }
-            default:
-            break;
-        }
-        req.body.ApiSchedule=runtime
-        let  refresh_token =resp2.data.refresh_token
-        let columns = ""
-        let data = ""
-        let check=""
-        for (let j = 0; j < Object.keys(req.body).length; j++) {
-            columns += Object.keys(req.body)[j] + ','
-            // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-            if ((req.body[Object.keys(req.body)[j]] == null)) {
-                check+=Object.keys(req.body)[j]+"=0 , "
-                data += "0,"
-            }
-            else if (typeof (req.body[Object.keys(req.body)[j]]) == "number" && Object.keys(req.body)[j]!='interfaceCode') {
-                check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" , "
-                data += req.body[Object.keys(req.body)[j]] + ","
-            }
-            else{
-                if (Object.keys(req.body)[j]!='interfaceCode') {
-                    check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" , "
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
+                username, //gave the values directly for testing
+                password,
+                orgname
+            }), {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
                 }
-                data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+            , withCredentials: true });
+            let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
+            let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
+                scope: "openid", //gave the values directly for testing
+                grant_type: "authorization_code",
+                client_id: clientId,
+                code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
+                code: redirectUrlCode,
+                redirect_url: "apiaccount://callback"
+            }), {
+                headers: {
+                    // 'application/json' is the modern content-type for JSON, but some
+                    // older servers may use 'text/json'.
+                    // See: http://bit.ly/text-json
+                    'content-type': 'application/x-www-form-urlencoded'
+                }
+            , withCredentials: true });
+            const dbConfig = {
+                user: SunUser,
+                password: SunPassword,
+                server: Sunserver,
+                database: SunDatabase,
+                "options": {
+                "abortTransactionOnError": true,
+                "encrypt": false,
+                "enableArithAbort": true,
+                trustServerCertificate: true
+                },
+                charset: 'utf8'
+            };
+            
+            //console.log(request.connect(dbConfig),"kkk");
+
+            token=resp2.data.id_token
+            let runtime;
+            console.log(token);
+            let myDate=new Date(req.body.SunSchedule)
+            switch (req.body.SunScheduleStatue) {
+                case "day": {//every hour
+        
+                let hour = req.body.SunSchedule.split(":")[0];
+                let min = req.body.SunSchedule.split(":")[1];
+                console.log("hour",hour);
+                console.log("min",min);
+                runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+                console.log(runtime);
+                break;
+                }
+                case "year": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                console.log(runtime);
+        
+                break;
+                }
+                case "month": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+                console.log(runtime);
+
+                break;
+                }
+                default:
+                break;
             }
-        }
-        
-        // console.log(columns);
-        // console.log(data);
-        console.log(check);
-        
+            req.body.SunSchedule=runtime
+            myDate=new Date(req.body.ApiSchedule)
+            switch (req.body.ApiScheduleStatue) {
+                case "apiday": {//every hour
+                let hour = req.body.ApiSchedule.split(":")[0];
+                let min = req.body.ApiSchedule.split(":")[1];
+                runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+                console.log(runtime);
+                break;
+                }
+                case "apiyear": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                console.log(runtime);
+            
+                break;
+                }
+                case "apimonth": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+                console.log(runtime);
+            
+                break;
+                }
+                default:
+                break;
+            }
+            req.body.ApiSchedule=runtime
+            let  refresh_token =resp2.data.refresh_token
+            let columns = ""
+            let data = ""
+            let check=""
+            for (let j = 0; j < Object.keys(req.body).length; j++) {
+                columns += Object.keys(req.body)[j] + ','
+                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+                if ((req.body[Object.keys(req.body)[j]] == null)) {
+                    check+=Object.keys(req.body)[j]+"=0 , "
+                    data += "0,"
+                }
+                else if (typeof (req.body[Object.keys(req.body)[j]]) == "number" && Object.keys(req.body)[j]!='interfaceCode') {
+                    check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" , "
+                    data += req.body[Object.keys(req.body)[j]] + ","
+                }
+                else{
+                    if (Object.keys(req.body)[j]!='interfaceCode') {
+                        check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" , "
+                    }
+                    data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+                }
+            }
+            
+            // console.log(columns);
+            // console.log(data);
+            console.log(check);
+            
 
-        const addCase = await request.query(
-            `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
-            where interfaceCode=${req.body.interfaceCode}`);
+            const addCase = await request.query(
+                `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
+                where interfaceCode=${req.body.interfaceCode}`);
 
-        job.reschedule(req.body.ApiSchedule)
-        //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
-        res.json("Submitted successfully");
-    } catch (error) {
-        let x=[]
-        console.log(error);
-        if(error.message.includes(400))
-            x.push("Invalid Client ID")
-        if(error.message.includes(401)){
-            x.push("Invalid username ,password or enterprise name")
+            job.reschedule(req.body.ApiSchedule)
+            //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+            res.json("Submitted successfully");
+        } catch (error) {
+            let x=[]
+            console.log(error);
+            if(error.message.includes(400))
+                x.push("Invalid Client ID")
+            if(error.message.includes(401)){
+                x.push("Invalid username ,password or enterprise name")
+            }
+        else
+                x.push(error)
+            res.json(x)
         }
-       else
-            x.push(error)
-        res.json(x)
-    }
+    else
+        res.json(errors)
 }
 module.exports.delete = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        //used to establish connection between database and the middleware
-        console.log(req.body);
-        //query to delete mapping data from Mapping table  in  database 
-        const values = await request.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
-        res.json(req.body)//viewing the data which is array of obecjts which is json 
-    } catch (error) {
-        res.json(error.message)
-    }
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            console.log(req.body);
+            //query to delete mapping data from Mapping table  in  database 
+            const values = await request.query(`delete from Mapping where MappingType='${req.body.MappingType}' and Source='${req.body.Source}' and Target='${req.body.Target}'`);
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else
+        res.json(errors)
 }
 module.exports.deleteInterface = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        //used to establish connection between database and the middleware
-        //query to delete PropertySettings data from Mapping table  in  database 
-        const values = await request.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
-        res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
-    } catch (error) {
-        res.json(error.message)
-    }
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            //query to delete PropertySettings data from Mapping table  in  database 
+            const values = await request.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
+            res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else
+        res.json(errors)
 }
 module.exports.reviewInterface = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        //used to establish connection between database and the middleware
-        //query to review PropertySettings data from Mapping table  in  database 
-        const values = await request.query(`select * from interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
-        res.json(values.recordset[0]);
-    } catch (error) {
-        res.json(error.message)
-    }
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            //query to review PropertySettings data from Mapping table  in  database 
+            const values = await request.query(`select * from interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+            res.json(values.recordset[0]);
+        } catch (error) {
+            res.json(error.message)
+        }
+    else
+        res.json(errors)
 }
 module.exports.importInterface = async (req, res) => {
     try {
@@ -1142,100 +1162,108 @@ module.exports.getMapping = async (req, res) => {
     }
 }
 module.exports.postMapping = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        //used to establish connection between database and the middleware
-        console.log(req.body);
-        //to change the level and Revenue from empty string to null as it should be int 
-    
-        for (let i = 0; i < req.body.length; i++) {
-            if (req.body[i].MappingType == 'Account') {
-                req.body[i].Level = null
-                req.body[i].RevenuCenter = null
-            }
-              //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
-        //const val = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
-    
-        //  const values = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
-         const values = await request.query(
-            `IF NOT EXISTS (SELECT * FROM Mapping
-                WHERE MappingCode='${req.body[i].MappingCode}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
-                BEGIN
-                INSERT INTO Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target)
-                VALUES ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
-                END`)
-        }
-        const val = await request.query(
-            `IF NOT EXISTS (SELECT * FROM MappingDefinition
-                WHERE MappingCode='${req.body[0].MappingCode}' and Description='${req.body[0].Description}')
-                BEGIN
-                INSERT INTO MappingDefinition (MappingCode,Description)
-                VALUES ('${req.body[0].MappingCode}','${req.body[0].Description}')
-                END`)
-        // const val = await request.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            console.log(req.body);
+            //to change the level and Revenue from empty string to null as it should be int 
         
-    console.log(req.body[0].MappingCode);
-    
-    
-        //used to close the connection between database and the middleware
-        res.json(req.body)//viewing the data which is array of obecjts which is json 
-    } catch (error) {
-        res.json(error.message)
-    }
+            for (let i = 0; i < req.body.length; i++) {
+                if (req.body[i].MappingType == 'Account') {
+                    req.body[i].Level = null
+                    req.body[i].RevenuCenter = null
+                }
+                //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
+            //const val = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
+        
+            //  const values = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
+            const values = await request.query(
+                `IF NOT EXISTS (SELECT * FROM Mapping
+                    WHERE MappingCode='${req.body[i].MappingCode}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
+                    BEGIN
+                    INSERT INTO Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target)
+                    VALUES ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
+                    END`)
+            }
+            const val = await request.query(
+                `IF NOT EXISTS (SELECT * FROM MappingDefinition
+                    WHERE MappingCode='${req.body[0].MappingCode}' and Description='${req.body[0].Description}')
+                    BEGIN
+                    INSERT INTO MappingDefinition (MappingCode,Description)
+                    VALUES ('${req.body[0].MappingCode}','${req.body[0].Description}')
+                    END`)
+            // const val = await request.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
+            
+        console.log(req.body[0].MappingCode);
+        
+        
+            //used to close the connection between database and the middleware
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else
+        res.json(errors)
 }
 module.exports.PropertySettings = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        //used to establish connection between database and the middleware
-        //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
-        // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
-        console.log(
-            `IF NOT EXISTS (SELECT * FROM PropertySettings
-                WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
-                BEGIN
-                INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                END`);
-        const values = await request.query(
-            `IF NOT EXISTS (SELECT * FROM PropertySettings
-                WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
-                BEGIN
-                INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                END`)
-    
-    
-      const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
-      await  request.close() 
-      console.log(sunCon,sunCon.recordset[0].SunSchedule);
-      let sunConuser =sunCon.recordset[0].SunUser;
-      let sunConSunPassword =sunCon.recordset[0].SunPassword
-      let sunConSunserver =sunCon.recordset[0].Sunserver
-      let sunConSunDatabase  =sunCon.recordset[0].SunDatabase
-      const dbConfig ={
-            user:sunConuser,
-            password: sunConSunPassword,
-            server: sunConSunserver,
-            database: sunConSunDatabase,
-            "options": {
-              "abortTransactionOnError": true,
-              "encrypt": false,
-              "enableArithAbort": true,
-              trustServerCertificate: true
-            },
-            charset: 'utf8'
-          };
-        jobSun.reschedule(sunCon.recordset[0].SunSchedule)     
-        //await request.query(``)
-        await  request.close() 
-        //used to close the connection between database and the middleware
-        res.json(req.body)//viewing the data which is array of obecjts which is json
-    } catch (error) {
-        res.json(error.message)
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
+            // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+            console.log(
+                `IF NOT EXISTS (SELECT * FROM PropertySettings
+                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+                    BEGIN
+                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+                    END`);
+            const values = await request.query(
+                `IF NOT EXISTS (SELECT * FROM PropertySettings
+                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+                    BEGIN
+                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+                    END`)
         
-    }
+        
+        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+        await  request.close() 
+        console.log(sunCon,sunCon.recordset[0].SunSchedule);
+        let sunConuser =sunCon.recordset[0].SunUser;
+        let sunConSunPassword =sunCon.recordset[0].SunPassword
+        let sunConSunserver =sunCon.recordset[0].Sunserver
+        let sunConSunDatabase  =sunCon.recordset[0].SunDatabase
+        const dbConfig ={
+                user:sunConuser,
+                password: sunConSunPassword,
+                server: sunConSunserver,
+                database: sunConSunDatabase,
+                "options": {
+                "abortTransactionOnError": true,
+                "encrypt": false,
+                "enableArithAbort": true,
+                trustServerCertificate: true
+                },
+                charset: 'utf8'
+            };
+            jobSun.reschedule(sunCon.recordset[0].SunSchedule)     
+            //await request.query(``)
+            await  request.close() 
+            //used to close the connection between database and the middleware
+            res.json(req.body)//viewing the data which is array of obecjts which is json
+        } catch (error) {
+            res.json(error.message)
+            
+        }
+    else
+        res.json(errors)
 }
 module.exports.getURL = async (req, res) => {
     try {

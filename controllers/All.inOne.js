@@ -32,18 +32,11 @@ module.exports.uploadLicense = async (req, res) => {
         else {
         // console.log(exDate,token)
         //best to use .getTime() to compare dates
-<<<<<<< HEAD
         if(date1.getTime() < date2.getTime()){
            let t = await request.query(`select * from  license`);
            //console.log(t.recordset.length,"kjkjj");
            if(t.recordset.length == 0){
               await request.query(`insert into  license (token) values('${token}')`);
-=======
-           let t = await sql.query(`select * from  license`);
-           //console.log(t.recordset.length,"kjkjj");
-           if(t.recordset.length == 0){
-              await sql.query(`insert into license (token) values('${token}')`);
->>>>>>> lamiaa
            }
            else if(t.recordset.length > 0){
             // console.log(t.recordset.length,"kjkjj");
@@ -51,6 +44,7 @@ module.exports.uploadLicense = async (req, res) => {
             await request.query(` UPDATE license set token='${token}' 
             WHERE token =(SELECT token FROM license)`);   
            }
+        }
         res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json 
         }
     } catch (error) {
@@ -66,15 +60,9 @@ module.exports.uploadLicense = async (req, res) => {
 }
 module.exports.getLisence = async(req,res)=>{
     try{
-<<<<<<< HEAD
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
     let license = await request.query(`select token from license`); 
-=======
-    await sql.connect(config)
-
-    let license = await sql.query(`select token from license`); 
->>>>>>> lamiaa
     if(license.recordset.length != 0 ){
         //  console.log(license.recordset[0].token);
          res.json(license.recordset[0].token) 
