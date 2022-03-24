@@ -5,19 +5,38 @@ const appRoutes = require('express').Router(); //call for Router method inside e
 const axios = require('axios');//call for using xios module
 const sql = require('mssql')//call for using sql module
 const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
+let mssql = require('../configuration/mssql-pool-management.js')
 //node-schedule allows us to schedule jobs (arbitrary functions) for execution at specific dates/time.
 const schedule = require('node-schedule');
 const date = require('date-and-time');//call for using date-and-time module 
 const { response } = require('express');
 const qs = require("qs")
 var status=[];
-const jobSun = schedule.scheduleJob('0 0 0 * * *', async function () {
+const jobSun = schedule.scheduleJob('* * * * * *', async function () {
     status = [];
     let dt = new Date();
     dt.setHours(dt.getHours() + 2);
     let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-    console.log(new Date(),"sun");
+    const dbConfig ={
+        user: "sa",
+        password: "mynewP@ssw0rdsa",
+        server: "192.168.1.120",
+        database: "SunSystemsData",
+        "options": {
+          "abortTransactionOnError": true,
+          "encrypt": false,
+          "enableArithAbort": true,
+          trustServerCertificate: true
+        },
+        charset: 'utf8'
+      };
+    let sqlPool = await mssql.GetCreateIfNotExistPool(dbConfig)
+    let request = new sql.Request(sqlPool)
+    let token = await request.query(`SELECT 1 FROM ACT_ACNT`);
+    // console.log(token);
+    // console.log("-----------------------------------------------------------");
 });
+jobSun.cancel();
 module.exports.stop = async (req, res) => {
     try {
         jobSun.cancel();
@@ -28,8 +47,9 @@ module.exports.stop = async (req, res) => {
 }
 module.exports.start = async (req, res) => {// dont forget to make this function for real
     try {
-        await sql.connect(config)
-        const addCase = await sql.query(`SELECT SunSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const addCase = await request.query(`SELECT SunSchedule FROM interfaceDefinition WHERE interfaceCode=43`);
         jobSun.reschedule(addCase.recordset[0].SunSchedule);
         res.json("done") 
     } catch (error) {
@@ -39,22 +59,23 @@ module.exports.start = async (req, res) => {// dont forget to make this function
 async function SUN(res,dat,req) {
     try {
         console.log(req.body);
-        await sql.connect(config)
+        let sqlPoolAPI = await mssql.GetCreateIfNotExistPool(config)
+        let requestAPI = new sql.Request(sqlPool)
         if(req == undefined){
             req={body:{
                 interfaceCod:"43",
                 date:dat
             }}
         }
-       const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
-       const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
+       const sunCon = await requestAPI.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
+       const buD =await requestAPI.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
        let MappingCode =buD.recordset[0].MappingCode
        let pk1= buD.recordset[0].BU
        let  SuspenseAccount = buD.recordset[0].SuspenseAccount
        let JournalType =buD.recordset[0].JournalType
        let Currencycode = buD.recordset[0].Currencycode
        let LedgerImportDescription =buD.recordset[0].LedgerImportDescription
-       let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
+       let data=await request.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
     ,isnull(T03.Target,'#') 'T03'
     ,isnull(T04.Target,'#') 'T04'
     ,isnull(T05.Target,'#') 'T05'
@@ -84,8 +105,6 @@ async function SUN(res,dat,req) {
     left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10  and T10.MappingCode = '${MappingCode}'`)
     data = data.recordset 
      console.log(data,LedgerImportDescription,MappingCode);
-     await  sql.close() 
-    
       const dbConfig ={
             user: sunCon.recordset[0].SunUser,
             password: sunCon.recordset[0].SunPassword,
@@ -99,11 +118,12 @@ async function SUN(res,dat,req) {
             },
             charset: 'utf8'
           };
-        await sql.connect(dbConfig)
+          let sqlPool = await mssql.GetCreateIfNotExistPool(dbConfig)
+          let request = new sql.Request(sqlPool)
         // let HDR_I = await sql.query(`SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS'`)
         // console.log(HDR_I);
         //                    HDR_I = HDR_I.recordsets[0].PSTG_HDR_ID;
-        await  sql.query(`
+        await  request.query(`
         
         IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_HDR
             WHERE  LAST_CHANGE_DATETIME = GETDATE() )
@@ -185,7 +205,7 @@ async function SUN(res,dat,req) {
                            0 )
                            END ` );
     
-    let HDR_ID = await sql.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='${LedgerImportDescription}')`)
+    let HDR_ID = await request.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='${LedgerImportDescription}')`)
                            HDR_ID = HDR_ID.recordset[0].PSTG_HDR_ID;
     console.log(HDR_ID,"kkkkk");
     for (let i = 0; i < data.length; i++) {
@@ -203,7 +223,7 @@ async function SUN(res,dat,req) {
         TransactionDate = TransactionDate.toISOString().replace('T', ' ').replace('Z', ' ')
         
     
-        // let x=await sql.query(`EXEC sp_describe_first_result_set N'SELECT * FROM ${pk1}_PSTG_DETAIL'`);
+        // let x=await request.query(`EXEC sp_describe_first_result_set N'SELECT * FROM ${pk1}_PSTG_DETAIL'`);
         // for (let i = 0; i < x.recordset.length; i++) {
         //     console.log(x.recordset.system_type_name);
         // }
@@ -219,7 +239,7 @@ async function SUN(res,dat,req) {
         //     }
         //   }
        // console.log(tempstr2);
-        await sql.query(` 
+        await request.query(` 
         IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_DETAIL
           WHERE  PSTG_HDR_ID=${HDR_ID} and LINE_NUM=${i+1})    
           BEGIN
@@ -419,8 +439,7 @@ async function SUN(res,dat,req) {
                      '${data[i].T01}' , '${data[i].T02}' , '${data[i].T03}' , '${data[i].T04}' , '${data[i].T05}' , '${data[i].T06}' , '${data[i].T07}' , '${data[i].T08}' , '${data[i].T09}' , '${data[i].T10}' ,0 , '', GETDATE(), GETDATE(), GETDATE(), GETDATE() , '' ,0 , '' ,0 , '' ,0 , '' ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0, GETDATE() ,0 , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0 ,0 , '' , '' , '' ,0 ,0 , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' ,0 , '' ,0, GETDATE() , '', GETDATE() , '' ,0 , '' , '' ,0, GETDATE() , '' ,0 ,0 ,0 ,0 ,0 , '' ,0 ,0 , '' , '', GETDATE() , '' , '' ,0)END`)  
      }
                
-        //await sql.query(``)
-        await  sql.close() 
+        //await request.query(``)
         if(res != undefined){
 
         res.json("successfully")
@@ -438,16 +457,17 @@ module.exports.importSun = async (req, res) => {
     // let dates=getDaysArray("2022-02-20","2022-02-23")
   try {
     console.log(req.body);
-    await sql.connect(config)
-    const sunCon = await sql.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
-   const buD =await sql.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
+    let sqlPoolAPI = await mssql.GetCreateIfNotExistPool(config)
+    let requestAPI = new sql.Request(sqlPool)
+    const sunCon = await requestAPI.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
+   const buD =await requestAPI.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
    let MappingCode =buD.recordset[0].MappingCode
    let pk1= buD.recordset[0].BU
    let  SuspenseAccount = buD.recordset[0].SuspenseAccount
    let JournalType =buD.recordset[0].JournalType
    let Currencycode = buD.recordset[0].Currencycode
    let LedgerImportDescription =buD.recordset[0].LedgerImportDescription
-   let data=await sql.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
+   let data=await requestAPI.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
 ,isnull(T03.Target,'#') 'T03'
 ,isnull(T04.Target,'#') 'T04'
 ,isnull(T05.Target,'#') 'T05'
@@ -477,8 +497,6 @@ left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.Re
 left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10  and T10.MappingCode = '${MappingCode}'`)
 data = data.recordset 
  console.log(data,LedgerImportDescription,MappingCode);
- await  sql.close() 
-
   const dbConfig ={
         user: sunCon.recordset[0].SunUser,
         password: sunCon.recordset[0].SunPassword,
@@ -492,11 +510,12 @@ data = data.recordset
         },
         charset: 'utf8'
       };
-    await sql.connect(dbConfig)
+      let sqlPool = await mssql.GetCreateIfNotExistPool(dbConfig)
+      let request = new sql.Request(sqlPool)
     // let HDR_I = await sql.query(`SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS'`)
     // console.log(HDR_I);
     //                    HDR_I = HDR_I.recordsets[0].PSTG_HDR_ID;
-    await  sql.query(`
+    await  request.query(`
     
     IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_HDR
         WHERE  LAST_CHANGE_DATETIME = GETDATE() )
@@ -578,7 +597,7 @@ data = data.recordset
                        0 )
                        END ` );
 
-let HDR_ID = await sql.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='${LedgerImportDescription}')`)
+let HDR_ID = await request.query(`select PSTG_HDR_ID from ${pk1}_PSTG_HDR WHERE  PSTG_HDR_ID=(SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='${LedgerImportDescription}')`)
                        HDR_ID = HDR_ID.recordset[0].PSTG_HDR_ID;
 console.log(HDR_ID,"kkkkk");
 for (let i = 0; i < data.length; i++) {
@@ -612,7 +631,7 @@ for (let i = 0; i < data.length; i++) {
     //     }
     //   }
    // console.log(tempstr2);
-    await sql.query(` 
+    await request.query(` 
     IF NOT EXISTS (SELECT * FROM ${pk1}_PSTG_DETAIL
       WHERE  PSTG_HDR_ID=${HDR_ID} and LINE_NUM=${i+1})    
       BEGIN
@@ -813,8 +832,7 @@ for (let i = 0; i < data.length; i++) {
  }
 
                        
-    //await sql.query(``)
-    await  sql.close() 
+    //await sql.query(``) 
     res.json("successfully")
 } catch (error) {
     res.json(error.message)
