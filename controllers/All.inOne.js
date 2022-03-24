@@ -14,75 +14,68 @@ module.exports.uploadLicense = async (req, res) => {
         //used to establish connection between database and the middleware
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let license =JSON.parse(req.body.license)
-        let token =license.token
+        let license = JSON.parse(req.body.license)
+        let token = license.token
         // console.log(token);
-        var bytes  = CryptoJS.AES.decrypt(token, 'lamiaa');
+        var bytes = CryptoJS.AES.decrypt(token, 'lamiaa');
         var originalText = bytes.toString(CryptoJS.enc.Utf8);
-        let exDate =JSON.parse(originalText)[0].EndDate
+        let exDate = JSON.parse(originalText)[0].EndDate
         // console.log(exDate);
         var date1 = new Date();
         var date2 = new Date(exDate);
-        if(token == undefined ){
-            res.json({massage:"invalid License"})
+        if (token == undefined) {
+            res.json({ massage: "invalid License" })
         }
-        else if(date1.getTime() > date2.getTime()){
-            res.json({massage:"license has expired"})
-         }
-        else {
-        // console.log(exDate,token)
-        //best to use .getTime() to compare dates
-        if(date1.getTime() < date2.getTime()){
-              await sql.query(`insert into license (token) values('${token}')`);
-           if(t.recordset.length == 0){
-           //console.log(t.recordset.length,"kjkjj");
-           let t = await sql.query(`select * from  license`);
-           let t = await request.query(`select * from  license`);
-           //console.log(t.recordset.length,"kjkjj");
-           if(t.recordset.length == 0){
-              await request.query(`insert into  license (token) values('${token}')`);
-              await request.query(`insert into license (token) values('${token}')`);
-           }
-           else if(t.recordset.length > 0){
-            // console.log(t.recordset.length,"kjkjj");
-               //await request.query(`delete * from license `);
-            await request.query(` UPDATE license set token='${token}'
-            WHERE token =(SELECT token FROM license)`);  
-           }
-        res.json({massage:"License Submited",token:token})//viewing the data which is array of obecjts which is json
-        }
-    } catch (error) {
-        let x ;
-        if(error.message.includes("Unexpected") ){
-            x="invalid License"
+        else if (date1.getTime() > date2.getTime()) {
+            res.json({ massage: "license has expired" })
         }
         else {
-            x =error.message
-         }
-        res.json({massage:x})
-    }
-}
-module.exports.getLisence = async(req,res)=>{
-    try{
-    let license = await request.query(`select token from license`); 
-    let request = new sql.Request(sqlPool)
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let license = await sql.query(`select token from license`); 
-    await sql.connect(config)
-    let license = await request.query(`select token from license`); 
-    let request = new sql.Request(sqlPool)
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    if(license.recordset.length != 0 ){
-        //  console.log(license.recordset[0].token);
-         res.json(license.recordset[0].token) 
+            // console.log(exDate,token)
+            //best to use .getTime() to compare dates
+                if (t.recordset.length == 0) {
+                    //console.log(t.recordset.length,"kjkjj");
+                    let t = await request.query(`select * from  license`);
+                    //console.log(t.recordset.length,"kjkjj");
+                    if (t.recordset.length == 0) {
+                        await request.query(`insert into license (token) values('${token}')`);
+                    }
+                    else if (t.recordset.length > 0) {
+                        // console.log(t.recordset.length,"kjkjj");
+                        //await request.query(`delete * from license `);
+                        await request.query(` UPDATE license set token='${token}'
+                                  WHERE token =(SELECT token FROM license)`);
+                    }
+                    res.json({ massage: "License Submited", token: token })//viewing the data which is array of obecjts which is json
 
-    }
-    else if(license.recordset.length == 0){
-        res.json("please uplode license") 
+                }
+            }
+         } catch (error) {
+                    let x;
+                    if (error.message.includes("Unexpected")) {
+                        x = "invalid License"
+                    }
+                    else {
+                        x = error.message
+                    }
+                    res.json({ massage: x })
+                }
+            }
+            module.exports.getLisence = async (req, res) => {
+                try {
+                    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+                    let request = new sql.Request(sqlPool)
+                    let license = await request.query(`select token from license`);
+                    if (license.recordset.length != 0) {
+                        //  console.log(license.recordset[0].token);
+                        res.json(license.recordset[0].token)
 
-    }
-    }
-    catch(error){
-       res.json(error.message) 
-    }
-}
+                    }
+                    else if (license.recordset.length == 0) {
+                        res.json("please uplode license")
+
+                    }
+                }
+                catch (error) {
+                    res.json(error.message)
+                }
+            }
