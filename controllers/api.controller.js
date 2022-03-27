@@ -3,6 +3,8 @@
 const appRoutes = require('express').Router(); //call for Router method inside express module to give access for any endpoint
 //Axios allows us to make HTTP requests (post & get). 
 const axios = require('axios');//call for using xios module
+const { check, validationResult } = require('express-validator')
+
 const sql = require('mssql')//call for using sql module
 const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
 let mssql = require('../configuration/mssql-pool-management.js')
@@ -14,6 +16,7 @@ const qs = require("qs");
 const { json } = require('body-parser');
 const { res } = require('date-and-time');
 const fs = require('fs')
+
 var status=[];
 let scJop=[]
 async function guestChecks(dat, limit, start, token, res) {
@@ -613,20 +616,20 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
     allForTwo(dat, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
 });
 job.cancel();
-sched()
+//sched()
 async function sched() {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
     let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
     interfaceCodes=interfaceCodes.recordset
     for (let i = 0; i < interfaceCodes.length; i++) {
-        console.log(interfaceCodes[i].interfaceCode);
+       // console.log(interfaceCodes[i].interfaceCode);
         let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${interfaceCodes[i].interfaceCode}`)
         apiSch.recordset[0].ApiSchedule='* * * * * *'
         console.log(apiSch.recordset[0].ApiSchedule );
         scJop.push(
             schedule.scheduleJob(apiSch.recordset[0].ApiSchedule, async function () {
-                console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
+              //  console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
             })
         )
     }
@@ -1226,63 +1229,63 @@ module.exports.postMapping = async (req, res) => {
     else
         res.json(errors)
 }
-module.exports.PropertySettings = async (req, res) => {
-    const errors = validationResult(req);
-    if (errors.isEmpty())
-        try {
-            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-            let request = new sql.Request(sqlPool)
-            //used to establish connection between database and the middleware
-            //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
-            // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
-            console.log(
-                `IF NOT EXISTS (SELECT * FROM PropertySettings
-                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
-                    BEGIN
-                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                    END`);
-            const values = await request.query(
-                `IF NOT EXISTS (SELECT * FROM PropertySettings
-                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
-                    BEGIN
-                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                    END`)
+// module.exports.PropertySettings = async (req, res) => {
+//     const errors = validationResult(req);
+//     if (errors.isEmpty())
+//         try {
+//             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+//             let request = new sql.Request(sqlPool)
+//             //used to establish connection between database and the middleware
+//             //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
+//             // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
+//             console.log(
+//                 `IF NOT EXISTS (SELECT * FROM PropertySettings
+//                     WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+//                     BEGIN
+//                     INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+//                     VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+//                     END`);
+//             const values = await request.query(
+//                 `IF NOT EXISTS (SELECT * FROM PropertySettings
+//                     WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+//                     BEGIN
+//                     INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+//                     VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+//                     END`)
         
         
-        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
-        await  request.close() 
-        console.log(sunCon,sunCon.recordset[0].SunSchedule);
-        let sunConuser =sunCon.recordset[0].SunUser;
-        let sunConSunPassword =sunCon.recordset[0].SunPassword
-        let sunConSunserver =sunCon.recordset[0].Sunserver
-        let sunConSunDatabase  =sunCon.recordset[0].SunDatabase
-        const dbConfig ={
-                user:sunConuser,
-                password: sunConSunPassword,
-                server: sunConSunserver,
-                database: sunConSunDatabase,
-                "options": {
-                "abortTransactionOnError": true,
-                "encrypt": false,
-                "enableArithAbort": true,
-                trustServerCertificate: true
-                },
-                charset: 'utf8'
-            };
-            jobSun.reschedule(sunCon.recordset[0].SunSchedule)     
-            //await request.query(``)
-            await  request.close() 
-            //used to close the connection between database and the middleware
-            res.json(req.body)//viewing the data which is array of obecjts which is json
-        } catch (error) {
-            res.json(error.message)
+//         const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+//         await  request.close() 
+//         console.log(sunCon,sunCon.recordset[0].SunSchedule);
+//         let sunConuser =sunCon.recordset[0].SunUser;
+//         let sunConSunPassword =sunCon.recordset[0].SunPassword
+//         let sunConSunserver =sunCon.recordset[0].Sunserver
+//         let sunConSunDatabase  =sunCon.recordset[0].SunDatabase
+//         const dbConfig ={
+//                 user:sunConuser,
+//                 password: sunConSunPassword,
+//                 server: sunConSunserver,
+//                 database: sunConSunDatabase,
+//                 "options": {
+//                 "abortTransactionOnError": true,
+//                 "encrypt": false,
+//                 "enableArithAbort": true,
+//                 trustServerCertificate: true
+//                 },
+//                 charset: 'utf8'
+//             };
+//             jobSun.reschedule(sunCon.recordset[0].SunSchedule)     
+//             //await request.query(``)
+//             await  request.close() 
+//             //used to close the connection between database and the middleware
+//             res.json(req.body)//viewing the data which is array of obecjts which is json
+//         } catch (error) {
+//             res.json(error.message)
             
-        }
-    else
-        res.json(errors)
-}
+//         }
+//     else
+//         res.json(errors)
+// }
 module.exports.getURL = async (req, res) => {
     try {
         res.json(JSON.parse(fs.readFileSync('configuration/config.txt', 'utf8')).urlBackend)

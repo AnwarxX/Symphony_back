@@ -55,7 +55,7 @@ appRoutes.get('/mapping', apiController.getMapping);
 //this endpoint used to send mapping data(mapp ,value,Revenue,level,inbut) from frontend and insert it in  database 
 appRoutes.post('/mapping',validation.mapping, apiController.postMapping);//
 //this endpoint used to send  Property data(BU,JournalType,Revenue,level,Currencycode) from frontend and insert it in  database 
-appRoutes.post('/PropertySettings',validation.PropertySettings, apiController.PropertySettings);//
+appRoutes.post('/PropertySettings',validation.PropertySettings, sunController.PropertySettings);//
 appRoutes.post('/reviewInterface',validation.reviewInterface, apiController.reviewInterface);//
 appRoutes.post('/update',validation.update, apiController.update);//
 appRoutes.post('/uploadLicense',allInOne.uploadLicense);//
