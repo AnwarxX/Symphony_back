@@ -16,7 +16,6 @@ const qs = require("qs");
 const { json } = require('body-parser');
 const { res } = require('date-and-time');
 const fs = require('fs')
-
 var status=[];
 let scJop=[]
 async function guestChecks(dat, limit, start, token, res) {
@@ -616,7 +615,7 @@ const job = schedule.scheduleJob('* * * * * *', async function () {
     allForTwo(dat, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
 });
 job.cancel();
-//sched()
+sched()
 async function sched() {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)

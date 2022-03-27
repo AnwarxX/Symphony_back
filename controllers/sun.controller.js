@@ -19,7 +19,6 @@ const jobSun = schedule.scheduleJob('* * * * * *', async function () {
     let dt = new Date();
     dt.setHours(dt.getHours() + 2);
     let dat = new Date(dt.getTime()).toISOString().split("T")[0]
-    SUN(res, dat, req);
 
     const dbConfig = {
         user: "sa",
@@ -41,6 +40,29 @@ const jobSun = schedule.scheduleJob('* * * * * *', async function () {
     // console.log("-----------------------------------------------------------");
 });
 jobSun.cancel();
+let scJop=[]
+
+sched()
+async function sched() {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    interfaceCodes=interfaceCodes.recordset
+    console.log(interfaceCodes);
+    for (let i = 0; i < interfaceCodes.length; i++) {
+       // console.log(interfaceCodes[i].interfaceCode);
+        let apiSch=await request.query(`SELECT SunSchedule From interfaceDefinition where interfaceCode= ${interfaceCodes[i].interfaceCode}`)
+        apiSch.recordset[0].ApiSchedule='* * * * * *'
+        console.log(apiSch.recordset[0].ApiSchedule );
+        scJop.push(
+            schedule.scheduleJob(apiSch.recordset[0].ApiSchedule, async function () {
+            //  console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
+            })
+        )
+    }
+    console.log( scJop);
+
+}
 
 module.exports.stop = async (req, res) => {
     try {
@@ -66,16 +88,25 @@ async function SUN(res, dat, req) {
         console.log(req.body);
         let sqlPoolAPI = await mssql.GetCreateIfNotExistPool(config)
         let requestAPI = new sql.Request(sqlPool)
-        if (req == undefined) {
-            req = {
-                body: {
-                    interfaceCod: "43",
-                    date: dat
-                }
-            }
+        let interfaceCod;
+        let date;
+        if (req.body == undefined) {
+            // req = {
+            //     body: {
+            //         interfaceCod: "43",
+            //         date: dat
+            //     }
+            // }
+            interfaceCod = interfaceCod;
+            date = dat
         }
-        const sunCon = await requestAPI.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${req.body.interfaceCod} `);
-        const buD = await requestAPI.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${req.body.interfaceCod}`)
+        else {
+
+            interfaceCod = req.body.interfaceCod;
+            date =req.body.date
+        }
+        const sunCon = await requestAPI.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${interfaceCod} `);
+        const buD = await requestAPI.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode=${interfaceCod}`)
         let MappingCode = buD.recordset[0].MappingCode
         let pk1 = buD.recordset[0].BU
         let SuspenseAccount = buD.recordset[0].SuspenseAccount
@@ -96,7 +127,7 @@ async function SUN(res, dat, req) {
     (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
     left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
     
-    where Main.busDt = '${req.body.date}'
+    where Main.busDt = '${date}'
     group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
     ) as Main
     
@@ -859,13 +890,13 @@ module.exports.PropertySettings = async (req, res) => {
             //used to establish connection between database and the middleware
             //query to insert Property data(BU,JournalType,Revenue,level,Currencycode) into PropertySettings table in database 
             // const values = await request.query(`insert into PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,ConnectionCode) VALUES  ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.ConnectionCode}')`);
-            console.log(
-                `IF NOT EXISTS (SELECT * FROM PropertySettings
-                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
-                    BEGIN
-                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                    END`);
+            // console.log(
+            //     `IF NOT EXISTS (SELECT * FROM PropertySettings
+            //         WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+            //         BEGIN
+            //         INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
+            //         VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+            //         END`);
             const values = await request.query(
                 `IF NOT EXISTS (SELECT * FROM PropertySettings
                     WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
@@ -875,6 +906,7 @@ module.exports.PropertySettings = async (req, res) => {
                     END`)
 
             const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+            console.log(sunCon);
             await request.close()
             // console.log(sunCon,sunCon.recordset[0].SunSchedule);
             let sunConuser = sunCon.recordset[0].SunUser;
@@ -894,15 +926,29 @@ module.exports.PropertySettings = async (req, res) => {
                 },
                 charset: 'utf8'
             };
-            jobSun.reschedule(sunCon.recordset[0].SunSchedule)
+            let interfaceCode = req.body.interfaceCode
+            console.log(interfaceCode)
+            //jobSun.reschedule(sunCon.recordset[0].SunSchedule)
+             scJop.push(
+                schedule.scheduleJob(sunCon.recordset[0].SunSchedule, async function () {
+                 console.log(interfaceCode);
+                 let dt = new Date();
+                 dt.setHours(dt.getHours() + 2);
+                 let dat = new Date(dt.getTime()).toISOString().split("T")[0]
+                 console.log(dat);
+                 SUN(interfaceCode, dat, req);
+                })
+            )
+
             //await request.query(``)
             await request.close()
             //used to close the connection between database and the middleware
             res.json(req.body)//viewing the data which is array of obecjts which is json
-        } catch (error) {
+        }   catch (error) {
             res.json(error.message)
         }
     else{
         res.json(errors)
     }
 }
+
