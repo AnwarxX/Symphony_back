@@ -38,7 +38,7 @@ module.exports.reviewInterface=[
 ]
 module.exports.update=[
   check('username','invalid input').matches(/^[a-zA-Z0-9_]*$/),
-  check('enterpriseShortName','invalid input').matches(/^[a-zA-Z0-9_]*$/),
+  check('enterpriseShortName','invalid input').matches(/^[a-zA-Z0-9_ ]*$/),
   check('interSunUserfaceCod','invalid input').matches(/^[a-zA-Z0-9_]*$/),
   check('lockRef','invalid input').matches(/^[a-zA-Z0-9_]*$/),
   check('email','invalid input').isEmail(),

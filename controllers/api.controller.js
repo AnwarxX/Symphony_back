@@ -21,6 +21,8 @@ let scJop=[]
 async function guestChecks(dat, limit, start, token, res) {
     let resp;
     console.log("guestChecks",start);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         //used to establish connection between database and the middleware
         //this loop itrates for more 8 days from the date that was sent in the equest
@@ -86,8 +88,8 @@ async function guestChecks(dat, limit, start, token, res) {
             res.json({api:"getGuestChecks",date:dat,stats:"Successfylly"})
     } catch (error) {
         start++;
-        console.log(error.message);
-        if(error.message.includes('expired')){
+        console.log(error.response.data.detail);
+        if(error.response.data.detail.includes('expired')){
             token=refreshToken(token);
         }
         if (start <= limit)
@@ -115,6 +117,8 @@ async function guestChecks(dat, limit, start, token, res) {
 async function guestChecksDetails(dat, limit, start, token, res) {
     console.log("guestChecksDetails");
     console.log("guestChecksDetails",start);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
     try {
@@ -204,7 +208,7 @@ async function guestChecksDetails(dat, limit, start, token, res) {
         }
     } catch (error) {
         start++;
-        console.log(error.message);
+        // console.log(error);
         if(error.message.includes('expired')){
             token=refreshToken(token);
         }
@@ -226,9 +230,11 @@ async function guestChecksDetails(dat, limit, start, token, res) {
         }
     }
 }
-function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d));}return a;};
+function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a;};
 async function allForOne(dat, limit, start, apiName, body, token, res) {
     console.log(apiName,start);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     // console.log(body);
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
@@ -305,7 +311,7 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
     }
     catch (error) {
         start++;
-        console.log(error.message);
+        // console.log(error);
         if(error.message.includes('expired')){
             token=refreshToken(token);
         }
@@ -339,6 +345,8 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
 }
 async function allForTwo(dat, limit, start, apiName, body, token, res) {
     console.log(apiName,start);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
@@ -406,7 +414,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
     }
     catch (error) {
         start++;
-        console.log(error.message);
+        // console.log(error.message);
         if(error.message.includes('expired')){
             token=refreshToken(token);
         }
@@ -434,6 +442,8 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
 async function AllMight(dat, limit, start, apiName, body, token, res) {
     let z=true; 
     console.log(body);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
@@ -564,9 +574,11 @@ async function AllMight(dat, limit, start, apiName, body, token, res) {
     }
 }
 async function refreshToken(token) {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         x=await request.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
-        console.log(x);
+        console.log(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
         let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
             scope: "openid", //gave the values directly for testing
             grant_type: "refresh_token",
@@ -619,16 +631,57 @@ sched()
 async function sched() {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
-    let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
     interfaceCodes=interfaceCodes.recordset
+    let monthDays=[]
     for (let i = 0; i < interfaceCodes.length; i++) {
        // console.log(interfaceCodes[i].interfaceCode);
         let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${interfaceCodes[i].interfaceCode}`)
-        apiSch.recordset[0].ApiSchedule='* * * * * *'
-        console.log(apiSch.recordset[0].ApiSchedule );
+        // apiSch.recordset[0].ApiSchedule='* * * * * *'
+        console.log("api",interfaceCodes[i].ApiSchedule);
+        let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
+        if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
+            monthDays=getDaysArray(
+                new Date(new Date(new Date().getFullYear() + "-" +  
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).getMonth()-1)).toISOString(),
+                new Date().getFullYear() + "-" +
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]
+            )
+        }
+        else{
+            let dt = new Date();
+            dt.setHours(dt.getHours() + 2);
+            let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+            monthDays=[dat]
+        }
+        console.log(interfaceCodes[i].token);
         scJop.push(
-            schedule.scheduleJob(apiSch.recordset[0].ApiSchedule, async function () {
-              //  console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
+            schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
+                for (let j = 0; j < monthDays.length; j++) {
+                    allForOne(monthDays[j], 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[j] },interfaceCodes[i].token)
+                    allForOne(monthDays[j], 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[j] }, interfaceCodes[i].token)
+                    allForOne(monthDays[j], 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[j] }, interfaceCodes[i].token)
+                    allForOne(monthDays[j], 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[j] }, interfaceCodes[i].token)
+                    allForOne(monthDays[j], 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[j] }, interfaceCodes[i].token)
+                    guestChecksDetails(monthDays[j], 10, 1, interfaceCodes[i].token)
+                    guestChecks(monthDays[j], 10, 1, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, interfaceCodes[i].token)
+                    allForTwo(monthDays[j], 10, 1, "getLocationDimensions",{}, interfaceCodes[i].token)
+                }
             })
         )
     }
@@ -982,7 +1035,6 @@ module.exports.update = async (req, res) => {
                 case "apimonth": {
                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
                 console.log(runtime);
-            
                 break;
                 }
                 default:
@@ -1015,8 +1067,9 @@ module.exports.update = async (req, res) => {
             // console.log(columns);
             // console.log(data);
             console.log(check);
-            
-
+            console.log(
+                `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
+                where interfaceCode=${req.body.interfaceCode}`);
             const addCase = await request.query(
                 `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
                 where interfaceCode=${req.body.interfaceCode}`);
@@ -1294,20 +1347,20 @@ module.exports.getURL = async (req, res) => {
 }
 module.exports.test = async (req, res) => {
     //----------------------------stop dynamic schedule----------------------------//
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
-    interfaceCodes=interfaceCodes.recordset
-    let x;
-    for (let i = 0; i < interfaceCodes.length; i++) {
-        console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-        if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-            x=i
-        }
-    }
-    console.log(x);
-    scJop[x].cancel()
-    res.json("tables")
+    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    // let request = new sql.Request(sqlPool)
+    // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
+    // interfaceCodes=interfaceCodes.recordset
+    // let x;
+    // for (let i = 0; i < interfaceCodes.length; i++) {
+    //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
+    //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
+    //         x=i
+    //     }
+    // }
+    // console.log(x);
+    // scJop[x].cancel()
+    // res.json("tables")
     //----------------------------stop dynamic schedule----------------------------//
     //----------------------------start dynamic schedule----------------------------//
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -1326,6 +1379,12 @@ module.exports.test = async (req, res) => {
     // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
     // res.json("tables")
     //----------------------------start dynamic schedule----------------------------//
+token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDk1OTQ5NjIsImlhdCI6MTY0ODM4NTM2MiwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.fC3ikzAXUyIGTxOcaXWrFYdpnkPs8o3QfqEWk9mUxRnBV7_Ck42OdShNFUdycntzxSwhgCkb1ablT5gEIvH5n3LXz71JulTBFKEZ0EkkYn3BEmLF8JpPw481PGkXZ1jBnF47w6r3IE6S1emBcFa-NND9YgpEqiF3r4VCqUpCl3skl4YurT8fdTdlNEJzhbID3vtei-n80XK1cSoKjFIT7VdiROLjKltZoo5nxJkq3X4YgXf8gd65ZEBbbQyHG9_S7eIrGG3o_mg2Q1fTbZOBvMEPCVwx9Q6LRU646efJDW9awMnTYTHFclA3aqqw3BJrVBCUMLmAzSH_PSV2THikCBBk_FpEeMoZUJ95jfiIro3UfTpr822vs0OVqLOijdMoMo3kU3crTPHf6DSZIAMQqb7H0UWPBN1F2gx3KmmRqTLz4TXY9CBM7BFixJtZnWxG8stGmh3AatFjfESpMP8w1uIhW_nbqsC6WnEMX038TI3Jw8qJQD2ULM0SG1Yxfh50"
+    allForOne("2022-03-26", 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": "2022-03-26" }, token)
+    guestChecksDetails("2022-03-26", 10, 1, token)
+    guestChecks("2022-03-26", 10, 1, token)
+    allForTwo("2022-03-26", 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token)
+    res.json("done")
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)

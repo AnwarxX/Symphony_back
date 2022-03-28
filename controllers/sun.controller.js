@@ -40,7 +40,7 @@ const jobSun = schedule.scheduleJob('* * * * * *', async function () {
     // console.log("-----------------------------------------------------------");
 });
 jobSun.cancel();
-let scJop=[]
+let sunJop=[]
 
 sched()
 async function sched() {
@@ -48,19 +48,17 @@ async function sched() {
     let request = new sql.Request(sqlPool)
     let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
     interfaceCodes=interfaceCodes.recordset
-    console.log(interfaceCodes);
     for (let i = 0; i < interfaceCodes.length; i++) {
-       // console.log(interfaceCodes[i].interfaceCode);
-        let apiSch=await request.query(`SELECT SunSchedule From interfaceDefinition where interfaceCode= ${interfaceCodes[i].interfaceCode}`)
-        apiSch.recordset[0].ApiSchedule='* * * * * *'
-        console.log(apiSch.recordset[0].ApiSchedule );
-        scJop.push(
-            schedule.scheduleJob(apiSch.recordset[0].ApiSchedule, async function () {
-            //  console.log("scJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
+       console.log(parseInt(interfaceCodes[i].interfaceCode));
+        let sunSch=await request.query(`SELECT SunSchedule From interfaceDefinition where interfaceCode= ${parseInt(interfaceCodes[i].interfaceCode)}`)
+        console.log(sunSch.recordset[0].SunSchedule);
+        sunJop.push(
+            schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
+                console.log("sunJop ["+interfaceCodes[i].interfaceCode+"]",new Date());
             })
         )
     }
-    console.log( scJop);
+    // console.log( sunJop);
 
 }
 
@@ -929,7 +927,7 @@ module.exports.PropertySettings = async (req, res) => {
             let interfaceCode = req.body.interfaceCode
             console.log(interfaceCode)
             //jobSun.reschedule(sunCon.recordset[0].SunSchedule)
-             scJop.push(
+            sunJop.push(
                 schedule.scheduleJob(sunCon.recordset[0].SunSchedule, async function () {
                  console.log(interfaceCode);
                  let dt = new Date();

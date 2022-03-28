@@ -33,7 +33,7 @@ res.json(resp.data)
 appRoutes.post("/importSun",validation.importSun, sunController.importSun)//donr
 appRoutes.get("/codes", apiController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
-appRoutes.post("/", apiController.test)//done
+appRoutes.get("/", apiController.test)//done
 appRoutes.post("/authorization",validation.authorization, apiController.authorization)//
 appRoutes.get("/sunCon", async (req, res) => {
 })
