@@ -33,7 +33,7 @@ res.json(resp.data)
 appRoutes.post("/importSun",validation.importSun, sunController.importSun)//donr
 appRoutes.get("/codes", apiController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
-appRoutes.get("/", apiController.test)//done
+appRoutes.get("/", sunController.test)//done
 appRoutes.post("/authorization",validation.authorization, apiController.authorization)//
 appRoutes.get("/sunCon", async (req, res) => {
 })
@@ -42,10 +42,10 @@ appRoutes.post('/deleteInterface',validation.deleteInterface, apiController.dele
 appRoutes.get("/importInterface", apiController.importInterface)
 //this endpoint used to retrive all the tables name and their columns
 appRoutes.get('/SysData', apiController.SysData);
-appRoutes.get("/stop", apiController.stop)
-appRoutes.get("/start", apiController.start)
-appRoutes.get("/stopSun", sunController.stop)
-appRoutes.get("/startSun", sunController.start)
+appRoutes.post("/stop", apiController.stop)
+appRoutes.post("/start", apiController.start)
+appRoutes.post("/stopSun", sunController.stop)
+appRoutes.post("/startSun", sunController.start)
 // this endpoint used to retrive all num value from  RevenuCenter table
 appRoutes.get('/revenue', apiController.revenue);
 //this endpoint used to send data(table name and column name) from frontend to search in database and get all column values 
