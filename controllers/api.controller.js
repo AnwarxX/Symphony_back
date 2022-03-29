@@ -1181,7 +1181,7 @@ module.exports.SysData = async (req, res) => {
         //used to establish connection between database and the middleware
         let data = []//an empty array used to push all column names with it's table name
         
-        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`);//retrive all tables name
+        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License'`);//retrive all tables name
         console.log(tables);
         for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
             let x = {}//object that will hold each table name with it's columns
