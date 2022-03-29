@@ -26,8 +26,8 @@ async function schedSun() {
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From interfaceDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
-        console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
-        console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
+        // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
+        // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=getDaysArray(
                 new Date(new Date(new Date().getFullYear() + "-" +  
@@ -52,7 +52,7 @@ async function schedSun() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=[dat]
         }
-        console.log("monthSunDays",monthSunDays);
+        // console.log("monthSunDays",monthSunDays);
         sunJop.push(
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
                 for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU].length; j++) {

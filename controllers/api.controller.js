@@ -405,13 +405,32 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
             }
             // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                let status = await request.query(
+                console.log(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+                        WHERE  ApiName='${apiName}' and Date='${dat}')
                         BEGIN
                         INSERT INTO ImportStatus (ApiName,Date,Status)
                         VALUES ('${apiName}','${dat}','Successful')
-                        END`)
+                        END
+                        else
+                        begin
+                        UPDATE ImportStatus
+                        SET Status = 'Successful'
+                        WHERE ApiName='${apiName}' and Date='${dat}'
+                        end`);
+                let status = await request.query(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                        WHERE  ApiName='${apiName}' and Date='${dat}')
+                        BEGIN
+                        INSERT INTO ImportStatus (ApiName,Date,Status)
+                        VALUES ('${apiName}','${dat}','Successful')
+                        END
+                        else
+                        begin
+                        UPDATE ImportStatus
+                        SET Status = 'Successful'
+                        WHERE ApiName='${apiName}' and Date='${dat}'
+                        end`)
             }
             else
                 res.json({api:apiName,date:dat,stats:'Successfully'})
@@ -433,7 +452,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
             if (res==undefined){
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    WHERE  ApiName='${apiName}' and Date='${dat}')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status)
                     VALUES (${apiName},'${dat}','Failed')
@@ -1385,6 +1404,16 @@ module.exports.postMapping = async (req, res) => {
 module.exports.getURL = async (req, res) => {
     try {
         res.json(JSON.parse(fs.readFileSync('configuration/config.txt', 'utf8')).urlBackend)
+    } catch (error) {
+        res.json(error.message)
+    }
+}
+module.exports.statusData = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let data =await request.query(`select * from ImportStatus`)
+        res.json(data.recordset)
     } catch (error) {
         res.json(error.message)
     }

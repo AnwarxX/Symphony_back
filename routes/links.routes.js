@@ -60,6 +60,7 @@ appRoutes.post('/reviewInterface',validation.reviewInterface, apiController.revi
 appRoutes.post('/update',validation.update, apiController.update);//
 appRoutes.post('/uploadLicense',allInOne.uploadLicense);//
 appRoutes.get('/getURL',apiController.getURL);
+appRoutes.get('/statusData', apiController.statusData);
 appRoutes.get('/getLisence', allInOne.getLisence);
 
 
