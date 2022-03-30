@@ -26,8 +26,8 @@ async function schedSun() {
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From interfaceDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
-        // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
-        // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
+        console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
+        console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=getDaysArray(
                 new Date(new Date(new Date().getFullYear() + "-" +  
@@ -52,11 +52,11 @@ async function schedSun() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=[dat]
         }
-        // console.log("monthSunDays",monthSunDays);
+        console.log("monthSunDays",monthSunDays);
         sunJop.push(
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
                 for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU].length; j++) {
-                    console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
+                   // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
                     await SUN(interfaceSunCodes[i].interfaceCode,monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j])
                 }
             })
@@ -584,16 +584,25 @@ module.exports.PropertySettings = async (req, res) => {
             //         VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
             //         END`);
             const values = await request.query(
-                `IF NOT EXISTS (SELECT * FROM PropertySettings
-                    WHERE BU='${req.body.BU}' and JournalType='${req.body.JournalType}' and Currencycode='${req.body.Currencycode}' and LedgerImportDescription='${req.body.LedgerImportDescription}' and SuspenseAccount='${req.body.SuspenseAccount}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}')
+                `Begin
+                DECLARE @Isdublicate BIT
+                IF NOT EXISTS (SELECT * FROM PropertySettings
+                    WHERE BU='${req.body.BU}')
                     BEGIN
                     INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
                     VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
-                    END`)
-
+					SET @Isdublicate=1
+					SELECT @Isdublicate AS 'Isdublicate'
+                    END
+                    else 
+					BEGIN 
+					SET @Isdublicate=0 
+					SELECT @Isdublicate AS 'Isdublicate'
+					END
+                    end`)
+            if(values.recordset[0].Isdublicate != false){ 
             const sunCon = await request.query(`SELECT * From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
-            console.log(sunCon);
-            await request.close()
+            //await request.close()
             // console.log(sunCon,sunCon.recordset[0].SunSchedule);
             // let sunConuser = sunCon.recordset[0].SunUser;
             // let sunConSunPassword = sunCon.recordset[0].SunPassword
@@ -615,9 +624,13 @@ module.exports.PropertySettings = async (req, res) => {
             let interfaceCode = req.body.interfaceCode
             console.log(interfaceCode)
             schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,interfaceCode )
-            await request.close()
+           // await request.close()
             //used to close the connection between database and the middleware
-            res.json(req.body)//viewing the data which is array of obecjts which is json
+            res.json("submitted sucssufuly ")//viewing the data which is array of obecjts which is json
+            }
+            else{
+                res.json("BU already existed")
+            }
         }   catch (error) {
             res.json(error.message)
         }
