@@ -634,8 +634,8 @@ async function sched() {
     interfaceCodes=interfaceCodes.recordset
     // console.log("interfaceCodes",interfaceCodes);
     for (let i = 0; i < interfaceCodes.length; i++) {
-    //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
-    //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
+       console.log("interfaceCode",interfaceCodes[i].interfaceCode);
+        console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
         let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
         if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
             monthDays[interfaceCodes[i].interfaceCode]=getDaysArray(
@@ -661,7 +661,7 @@ async function sched() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthDays[interfaceCodes[i].interfaceCode]=[dat]
         }
-        // console.log("api",monthDays);
+        console.log("api",monthDays);
         scJop.push(
             schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
                 for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode].length; j++) {
@@ -1218,19 +1218,19 @@ module.exports.SysData = async (req, res) => {
 }
 module.exports.stop = async (req, res) => {
     try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
-        interfaceCodes=interfaceCodes.recordset
-        let x;
-        for (let i = 0; i < interfaceCodes.length; i++) {
-            console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-            if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-                x=i
-            }
-        }
-        console.log(x);
-        scJop[x].cancel()
+        // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        // let request = new sql.Request(sqlPool)
+        // let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
+        // interfaceCodes=interfaceCodes.recordset
+        // let x;
+        // for (let i = 0; i < interfaceCodes.length; i++) {
+        //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
+        //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
+        //         x=i
+        //     }
+        // }
+        console.log(req.body.interfaceCode);
+        scJop[req.body.interfaceCode].cancel()
         res.json("Schedule has stopped")
     } catch (error) {
         res.json(error.message)
@@ -1240,17 +1240,17 @@ module.exports.start = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
+        // let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
         let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${req.body.interfaceCode}`)
-        interfaceCodes=interfaceCodes.recordset
-        let x;
-        for (let i = 0; i < interfaceCodes.length; i++) {
-            console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-            if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-                x=i
-            }
-        }
-        scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
+        // interfaceCodes=interfaceCodes.recordset
+        // let x;
+        // for (let i = 0; i < interfaceCodes.length; i++) {
+        //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
+        //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
+        //         x=i
+        //     }
+        // }
+        scJop[req.body.interfaceCode].reschedule(apiSch.recordset[0].ApiSchedule)
         res.json("Schedule has started")
     } catch (error) {
         res.json(error.message)
