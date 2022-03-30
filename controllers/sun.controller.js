@@ -15,6 +15,7 @@ const { response } = require('express');
 const qs = require("qs")
 var status = [];
 let sunJop=[]
+let monthSunDays={}
 schedSun()
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
 async function schedSun() {
@@ -22,7 +23,6 @@ async function schedSun() {
     let request = new sql.Request(sqlPool)
     let interfaceSunCodes=await request.query("SELECT interfaceCode,BU From PropertySettings")
     interfaceSunCodes=interfaceSunCodes.recordset
-    let monthSunDays={}
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From interfaceDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
@@ -63,7 +63,7 @@ async function schedSun() {
         )
     }
 }
-async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode ) {
+async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     // let request = new sql.Request(sqlPool)
     // let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
@@ -78,7 +78,7 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode ) {
         schedule.scheduleJob(sunSchedule, async function () {
             let sunDate=sunSchedule.split(" ")
             if(SunScheduleStatue=="month"){
-                monthSunDays=getDaysArray(
+                monthSunDays[interfaceCode+BU]=getDaysArray(
                     new Date(new Date(new Date().getFullYear() + "-" +  
                     (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                     ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
@@ -99,10 +99,10 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode ) {
                 let dt = new Date();
                 dt.setHours(dt.getHours() + 2);
                 let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-                monthSunDays=[dat]
+                monthSunDays[interfaceCode+BU]=[dat]
             }
-            for (let j = 0; j < monthSunDays.length; j++) {
-                SUN(interfaceCode, monthSunDays[i])
+            for (let j = 0; j < monthSunDays[interfaceCode+BU].length; j++) {
+                SUN(interfaceCode, monthSunDays[interfaceCode+BU][j])
             }
         })
     )
@@ -623,7 +623,7 @@ module.exports.PropertySettings = async (req, res) => {
             // };
             let interfaceCode = req.body.interfaceCode
             console.log(interfaceCode)
-            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,interfaceCode )
+            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,interfaceCode ,req.body.BU)
            // await request.close()
             //used to close the connection between database and the middleware
             res.json("submitted sucssufuly ")//viewing the data which is array of obecjts which is json
