@@ -19,7 +19,7 @@ const fs = require('fs')
 var status=[];
 let scJop=[]
 let monthDays={}
-async function guestChecks(dat, limit, start, token, interfaceCode, res) {
+async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
     let resp;
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
@@ -29,7 +29,7 @@ async function guestChecks(dat, limit, start, token, interfaceCode, res) {
         //this loop itrates for more 8 days from the date that was sent in the equest
         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
         //the data from the API
-        resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": dat }, {
+        resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', body, {
             headers: {
                 // 'application/json' is the modern content-type for JSON, but some
                 // older servers may use 'text/json'.
@@ -77,11 +77,17 @@ async function guestChecks(dat, limit, start, token, interfaceCode, res) {
         if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE ApiName='getGuestChecks' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
+                    WHERE ApiName='getGuestChecks' and Date='${dat}' and interfaceCode='${interfaceCode}')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                     VALUES ('getGuestChecks','${dat}','Successful','${interfaceCode}')
-                    END`)
+                    END
+                    else
+                    begin
+                    UPDATE ImportStatus
+                    SET Status = 'Successful'
+                    WHERE ApiName='getGuestChecks' and Date='${dat}'
+                    end`)
                     // status.push({API:"getGuestChecks",date:dat,status:'success'})
         }
         else
@@ -115,7 +121,7 @@ async function guestChecks(dat, limit, start, token, interfaceCode, res) {
         // }
     }
 }
-async function guestChecksDetails(dat, limit, start, token, interfaceCode, res) {
+async function guestChecksDetails(dat, limit, start, body, token, interfaceCode, res) {
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -123,7 +129,7 @@ async function guestChecksDetails(dat, limit, start, token, interfaceCode, res) 
     try {
         console.log("guestChecksDetails",start);
         // for (let i = 0; i < 8; i++) {
-            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": dat }, {
+            const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', body, {
                 headers: {
                     // 'application/json' is the modern content-type for JSON, but some
                     // older servers may use 'text/json'.
@@ -193,21 +199,20 @@ async function guestChecksDetails(dat, limit, start, token, interfaceCode, res) 
             }
         // }
         // status.push({API:"guestChecksDetails",date:dat,status:'success'})
-        console.log(
-            `IF NOT EXISTS (SELECT * FROM ImportStatus
-                WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
-                BEGIN
-                INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-                VALUES ('guestChecksDetails','${dat}','Successful','${interfaceCode}')
-                END`);
         if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
+                    WHERE  ApiName='guestChecksDetails' and Date='${dat}' and interfaceCode='${interfaceCode}')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                     VALUES ('guestChecksDetails','${dat}','Successful','${interfaceCode}')
-                    END`)
+                    END
+                    else
+                    begin
+                    UPDATE ImportStatus
+                    SET Status = 'Successful'
+                    WHERE ApiName='guestChecksDetails' and Date='${dat}'
+                    end`)
         }
         else{
             // res.json({api:"guestChecksDetails",date:dat,stats:"Successfylly"})
@@ -304,21 +309,20 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                 // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
-            console.log(
-                `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
-                    BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-                    VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
-                    END`);
             if (res==undefined) {
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
                         BEGIN
                         INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                         VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
-                        END`)
+                        END
+                        else
+                        begin
+                        UPDATE ImportStatus
+                        SET Status = 'Successful'
+                        WHERE ApiName='${apiName}' and Date='${dat}'
+                        end`)
             }
             else
                 res.json({api:apiName,date:dat,stats:'Successfully'})
@@ -399,13 +403,6 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
-                console.log(
-                    `IF NOT EXISTS (SELECT * FROM ${apiName}
-                        WHERE ${check.slice(0, -4)})
-                        BEGIN
-                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
-                        VALUES (${data.slice(0, -1)})
-                        END`);
                 const addCase = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
@@ -634,8 +631,8 @@ async function sched() {
     monthDays={}
     // console.log("interfaceCodes",interfaceCodes);
     for (let i = 0; i < interfaceCodes.length; i++) {
-    //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
-    //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
+       console.log("interfaceCode",interfaceCodes[i].interfaceCode);
+        console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
         let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
         if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
             monthDays[interfaceCodes[i].interfaceCode]=getDaysArray(
@@ -661,22 +658,22 @@ async function sched() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthDays[interfaceCodes[i].interfaceCode]=[dat]
         }
-        // console.log("api",monthDays);
+        console.log("api",interfaceCodes[i].lockRef);
         scJop[interfaceCodes[i].interfaceCode]=
             schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
                 for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode].length; j++) {
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] },interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    guestChecksDetails(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, interfaceCodes[i].token)
-                    guestChecks(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, interfaceCodes[i].token)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode][j] },interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    guestChecksDetails(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    guestChecks(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
                 }
             })
     }
 }
-async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
+async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     // let request = new sql.Request(sqlPool)
     // let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
@@ -687,7 +684,8 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
     //     // apiSch.recordset[0].ApiSchedule='* * * * * *'
     //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
     //     console.log(monthDays);
-    scJop[interfaceCodes[i].interfaceCode]=
+    console.log({ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token});
+    scJop[interfaceCode]=
         schedule.scheduleJob(ApiSchedule, async function () {
             let apiDate=ApiSchedule.split(" ")
             if(ApiScheduleStatue=="apimonth"){
@@ -715,13 +713,13 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
                 monthDays[interfaceCode]=[dat]
             }
             for (let j = 0; j < monthDays[interfaceCode].length; j++) {
-                allForOne(monthDays[interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCode][j] },token)
-                allForOne(monthDays[interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCode][j] }, token)
-                allForOne(monthDays[interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCode][j] }, token)
-                allForOne(monthDays[interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCode][j] }, token)
-                allForOne(monthDays[interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCode][j] }, token)
-                guestChecksDetails(monthDays[interfaceCode][j], 10, 1, token)
-                guestChecks(monthDays[interfaceCode][j], 10, 1, token)
+                allForOne(monthDays[interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": lockRef, "busDt": monthDays[interfaceCode][j] },token,interfaceCode)
+                allForOne(monthDays[interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": lockRef, "busDt": monthDays[interfaceCode][j] }, token,interfaceCode)
+                allForOne(monthDays[interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": lockRef, "busDt": monthDays[interfaceCode][j] }, token,interfaceCode)
+                allForOne(monthDays[interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": lockRef, "busDt": monthDays[interfaceCode][j] }, token,interfaceCode)
+                allForOne(monthDays[interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": lockRef, "busDt": monthDays[interfaceCode][j] }, token,interfaceCode)
+                guestChecksDetails(monthDays[interfaceCode][j], 10, 1,{ "locRef": lockRef, "clsdBusDt": monthDays[interfaceCode][j] }, token,interfaceCode)
+                guestChecks(monthDays[interfaceCode][j], 10, 1,{ "locRef": lockRef, "clsdBusDt": monthDays[interfaceCode][j] }, token,interfaceCode)
             }
         })
     // }
@@ -731,35 +729,35 @@ module.exports.import = async (req, res) => {
     let request = new sql.Request(sqlPool)
     console.log(req.body);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
-    token=await request.query(`select token from interfaceDefinition where interfaceCode =${req.body.interface}`);
+    token=await request.query(`select token,lockRef from interfaceDefinition where interfaceCode =${req.body.interface}`);
     // console.log(token.recordset[0].token); 
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
-            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
-            guestChecks(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
+            guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
-                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
 
             }
             else if(req.body.api=="all"){
-                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
-                guestChecks(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+                guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
                 allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token,req.body.interface)
             }
             else{
-                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
 
             }        }
     // }
@@ -941,13 +939,24 @@ module.exports.authorization = async (req, res) => {
             //         END`);
 
             const addCase = await request.query(
-                `IF NOT EXISTS (SELECT * FROM interfaceDefinition
-                    WHERE ${check.slice(0, -4)})
-                    BEGIN
-                    INSERT INTO interfaceDefinition (${columns}token,refreshToken)
-                    VALUES (${data}'${token}','${refresh_token}')
-                    END`);
-            await schedPush(req.body.ApiSchedule,req.body.ApiScheduleStatue,token)
+                `
+                begin
+                DECLARE @Isdublicate BIT
+                IF NOT EXISTS (SELECT * FROM interfaceDefinition
+                WHERE ${check.slice(0, -4)})
+                BEGIN
+                INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+                VALUES (${data}'${token}','${refresh_token}')
+                END
+                else
+                begin
+                SET @Isdublicate=0 
+                SELECT @Isdublicate AS 'Isdublicate'
+                end
+                end`);
+                const interfaceCode = await request.query(  `select max(interfaceCode) from interfaceDefinition`);
+                if(addCase.recordset==undefined)
+                    await schedPush(req.body.ApiSchedule,req.body.ApiScheduleStatue,interfaceCode.recordset[0][""],req.body.lockRef,token)
             //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
             res.json("Submitted successfully");
         } catch (error) {

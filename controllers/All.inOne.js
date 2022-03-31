@@ -58,23 +58,23 @@ module.exports.uploadLicense = async (req, res) => {
                     }
                     res.json({ massage: x })
                 }
-            }
-            module.exports.getLisence = async (req, res) => {
-                try {
-                    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-                    let request = new sql.Request(sqlPool)
-                    let license = await request.query(`select token from license`);
-                    if (license.recordset.length != 0) {
-                        //  console.log(license.recordset[0].token);
-                        res.json(license.recordset[0].token)
+}
+module.exports.getLisence = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let license = await request.query(`select token from license`);
+        if (license.recordset.length != 0) {
+            //  console.log(license.recordset[0].token);
+            res.json(license.recordset[0].token)
 
-                    }
-                    else if (license.recordset.length == 0) {
-                        res.json("please uplode license")
+        }
+        else if (license.recordset.length == 0) {
+            res.json("please uplode license")
 
-                    }
-                }
-                catch (error) {
-                    res.json(error.message)
-                }
-            }
+        }
+    }
+    catch (error) {
+        res.json(error.message)
+    }
+}
