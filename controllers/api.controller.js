@@ -19,12 +19,12 @@ const fs = require('fs')
 var status=[];
 let scJop=[]
 let monthDays={}
-async function guestChecks(dat, limit, start, token, res) {
+async function guestChecks(dat, limit, start, token, interfaceCode, res) {
     let resp;
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         console.log("guestChecks",start);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
         //used to establish connection between database and the middleware
         //this loop itrates for more 8 days from the date that was sent in the equest
         //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
@@ -74,14 +74,13 @@ async function guestChecks(dat, limit, start, token, res) {
             //this query is used to insert the vales in thier columns
             // const media = await request.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
         }
-        
         if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE ApiName='getGuestChecks' and Date='${dat}' and Status='Successful')
+                    WHERE ApiName='getGuestChecks' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
                     BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES ('getGuestChecks','${dat}','Successful')
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('getGuestChecks','${dat}','Successful','${interfaceCode}')
                     END`)
                     // status.push({API:"getGuestChecks",date:dat,status:'success'})
         }
@@ -104,10 +103,10 @@ async function guestChecks(dat, limit, start, token, res) {
             if (res==undefined){
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed')
+                    WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
                     BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES ('getGuestChecks','${dat}','Failed')
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('getGuestChecks','${dat}','Failed','${interfaceCode}')
                     END`)
             }
             else
@@ -116,13 +115,13 @@ async function guestChecks(dat, limit, start, token, res) {
         // }
     }
 }
-async function guestChecksDetails(dat, limit, start, token, res) {
+async function guestChecksDetails(dat, limit, start, token, interfaceCode, res) {
     //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive 
     //the data from the API
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         console.log("guestChecksDetails",start);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
         // for (let i = 0; i < 8; i++) {
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getGuestChecks', { "locRef": "CHGOUNA", "clsdBusDt": dat }, {
                 headers: {
@@ -194,14 +193,20 @@ async function guestChecksDetails(dat, limit, start, token, res) {
             }
         // }
         // status.push({API:"guestChecksDetails",date:dat,status:'success'})
-        
+        console.log(
+            `IF NOT EXISTS (SELECT * FROM ImportStatus
+                WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
+                BEGIN
+                INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                VALUES ('guestChecksDetails','${dat}','Successful','${interfaceCode}')
+                END`);
         if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful')
+                    WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
                     BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES ('guestChecksDetails','${dat}','Successful')
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('guestChecksDetails','${dat}','Successful','${interfaceCode}')
                     END`)
         }
         else{
@@ -223,22 +228,22 @@ async function guestChecksDetails(dat, limit, start, token, res) {
             if (res==undefined)
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM guestChecksDetails
-                        WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed')
+                        WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
                         BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status)
-                        VALUES ('guestChecksDetails','${dat}','Failed')
+                        INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                        VALUES ('guestChecksDetails','${dat}','Failed','${interfaceCode}')
                         END`);
                 // res.json({api:'guestChecksDetails',date:dat,stats:'Faild'})
         }
     }
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
-async function allForOne(dat, limit, start, apiName, body, token, res) {
+async function allForOne(dat, limit, start, apiName, body, token, interfaceCode, res) {
     // console.log(body);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         console.log(apiName,start);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
@@ -299,13 +304,20 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
                 // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
+            console.log(
+                `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
+                    END`);
             if (res==undefined) {
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful' and interfaceCode='${interfaceCode}')
                         BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status)
-                        VALUES ('${apiName}','${dat}','Successful')
+                        INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                        VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
                         END`)
             }
             else
@@ -326,19 +338,12 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
             if (res==undefined){
-                console.log(
-                    `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
-                    BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES (${apiName},'${dat}','Failed')
-                    END`);
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
                     BEGIN
-                    INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES (${apiName},'${dat}','Failed')
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES (${apiName},'${dat}','Failed','${interfaceCode}')
                     END`);
             }
             else
@@ -346,11 +351,11 @@ async function allForOne(dat, limit, start, apiName, body, token, res) {
         }
     }
 }
-async function allForTwo(dat, limit, start, apiName, body, token, res) {
+async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode, res) {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
         console.log(apiName,start);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
             if (apiName=="getLocationDimensions") {
@@ -394,6 +399,13 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
                 // console.log(columns);
                 // console.log(data);
                 // console.log(check);
+                console.log(
+                    `IF NOT EXISTS (SELECT * FROM ${apiName}
+                        WHERE ${check.slice(0, -4)})
+                        BEGIN
+                        INSERT INTO ${apiName} (${columns.slice(0, -1)})
+                        VALUES (${data.slice(0, -1)})
+                        END`);
                 const addCase = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ${apiName}
                         WHERE ${check.slice(0, -4)})
@@ -405,25 +417,12 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
             }
             // status.push({api:apiName,date:dat,stats:'success'})
             if (res==undefined) {
-                console.log(
-                    `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}')
-                        BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status)
-                        VALUES ('${apiName}','${dat}','Successful')
-                        END
-                        else
-                        begin
-                        UPDATE ImportStatus
-                        SET Status = 'Successful'
-                        WHERE ApiName='${apiName}' and Date='${dat}'
-                        end`);
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}')
+                        WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
                         BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status)
-                        VALUES ('${apiName}','${dat}','Successful')
+                        INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                        VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
                         END
                         else
                         begin
@@ -463,7 +462,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, res) {
         }
     }
 }
-async function AllMight(dat, limit, start, apiName, body, token, res) {
+async function AllMight(dat, limit, start, apiName, body, token, interfaceCode, res) {
     let z=true; 
     try {
         console.log(body);
@@ -632,10 +631,11 @@ async function sched() {
     let request = new sql.Request(sqlPool)
     let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
     interfaceCodes=interfaceCodes.recordset
+    monthDays={}
     // console.log("interfaceCodes",interfaceCodes);
     for (let i = 0; i < interfaceCodes.length; i++) {
-       console.log("interfaceCode",interfaceCodes[i].interfaceCode);
-        console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
+    //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
+    //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
         let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
         if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
             monthDays[interfaceCodes[i].interfaceCode]=getDaysArray(
@@ -661,20 +661,19 @@ async function sched() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthDays[interfaceCodes[i].interfaceCode]=[dat]
         }
-        console.log("api",monthDays);
-        scJop.push(
+        // console.log("api",monthDays);
+        scJop[interfaceCodes[i].interfaceCode]=
             schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
                 for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode].length; j++) {
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] },interfaceCodes[i].token)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] },interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    allForOne(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": monthDays[interfaceCodes[i].interfaceCode][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
                     guestChecksDetails(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, interfaceCodes[i].token)
                     guestChecks(monthDays[interfaceCodes[i].interfaceCode][j], 10, 1, interfaceCodes[i].token)
                 }
             })
-        )
     }
 }
 async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
@@ -688,7 +687,7 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
     //     // apiSch.recordset[0].ApiSchedule='* * * * * *'
     //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
     //     console.log(monthDays);
-    scJop.push(
+    scJop[interfaceCodes[i].interfaceCode]=
         schedule.scheduleJob(ApiSchedule, async function () {
             let apiDate=ApiSchedule.split(" ")
             if(ApiScheduleStatue=="apimonth"){
@@ -725,7 +724,6 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,token) {
                 guestChecks(monthDays[interfaceCode][j], 10, 1, token)
             }
         })
-    )
     // }
 }
 module.exports.import = async (req, res) => {
@@ -738,30 +736,30 @@ module.exports.import = async (req, res) => {
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
-            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token)
-            guestChecks(req.body.date, 10, 1, token.recordset[0].token)
+            guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
+            guestChecks(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
-                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
+                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
 
             }
             else if(req.body.api=="all"){
-                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
-                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
-                allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
-                allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
-                allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token)
-                guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token)
-                guestChecks(req.body.date, 10, 1, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token)
-                allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token)
+                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": "CHGOUNA", "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                guestChecksDetails(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
+                guestChecks(req.body.date, 10, 1, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token,req.body.interface)
             }
             else{
-                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token)
+                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": "CHGOUNA"}, token.recordset[0].token,req.body.interface)
 
             }        }
     // }
@@ -788,7 +786,7 @@ module.exports.interfaceCode = async (req, res) => {
         //used to establish connection between database and the middleware
         const interfacedata = await request.query(`SELECT interfaceCode From  interfaceDefinition `)
           //used to establish connection between database and the middleware
-          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails'`)
+          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License'`)
         res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
     } catch (error) {
         res.json(error.message)
@@ -931,9 +929,9 @@ module.exports.authorization = async (req, res) => {
                 }
             }
             
-            console.log(columns);
-            console.log(data);
-            console.log(check);
+            // console.log(columns);
+            // console.log(data);
+            // console.log(check);
             // console.log(
             //     `IF NOT EXISTS (SELECT * FROM interfaceDefinition
             //         WHERE ${check.slice(0, -4)})
@@ -963,8 +961,10 @@ module.exports.authorization = async (req, res) => {
                 x.push(error.message)
             res.json(x)
         }
-    else
+    else{
+        console.log(errors);
         res.json(errors)
+    }
 }
 module.exports.update = async (req, res) => {
     console.log(req.body);
@@ -1116,7 +1116,7 @@ module.exports.update = async (req, res) => {
                 `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
                 where interfaceCode=${req.body.interfaceCode}`);
 
-            job.reschedule(req.body.ApiSchedule)
+            scJop[req.body.interfaceCode].reschedule(req.body.ApiSchedule)
             //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
             res.json("Submitted successfully");
         } catch (error) {
@@ -1148,8 +1148,10 @@ module.exports.delete = async (req, res) => {
         } catch (error) {
             res.json(error.message)
         }
-    else
+    else{
+        console.log(errors,req.body.Source);
         res.json(errors)
+    }
 }
 module.exports.deleteInterface = async (req, res) => {
     const errors = validationResult(req);
