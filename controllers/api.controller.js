@@ -16,9 +16,64 @@ const qs = require("qs");
 const { json } = require('body-parser');
 const { res } = require('date-and-time');
 const fs = require('fs')
+const nodemailer = require("nodemailer");
+const {google} = require('googleapis');
+
+const clientId = "488693672463-atpslq7416c2e6v6c014ec9l6vgltecl.apps.googleusercontent.com"
+const clientSecret = "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"
+const redirectURI = "https://developers.google.com/oauthplayground"
+const refresh_token = "1//049fY2PJQc5HwCgYIARAAGAQSNwF-L9IrH6RXcaDvcQrACfTOJRGTTUgg_QYGBI9gj_3hKb4oFzDbnfkb6oUcMjCzSYx8OkqBALw"
+const oAuth2Client = new google.auth.OAuth2(clientId,clientSecret,redirectURI)
+oAuth2Client.setCredentials({refresh_token})
+
 var status=[];
 let scJop=[]
 let monthDays={}
+async function sendMail(interfaceCode,apiName,dat) {
+    try{
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const email = await request.query(`SELECT email FROM interfaceDefinition WHERE interfaceCode=${interfaceCode}`);
+
+      const accrssToken = await oAuth2Client.getAccessToken()
+      const transporter = nodemailer.createTransport({
+  
+        servise: "gmail",
+        host: 'smtp.gmail.com',
+        port: 587,
+        auth: {
+          type:"OAuth2",
+          user: "Actpackageapp@gmail.com",
+          clientId: clientId ,
+          clientSecret:clientSecret,
+          refreshToken:refresh_token,
+          accessToken:accrssToken 
+        }
+
+        
+      });
+      var Email = {
+        from: '"ACT All-In-One" <'+transporter.options.auth.user+'> ', // sender address
+        to: `"lamiaa.mohamed@act.eg"`,
+        cc: [email.recordset[0].email,"mahmoud.gamal@act.eg"],
+        subject: "ACT  All-in-One", 
+        html: `
+          <div>
+             <p>Dear ,</p>
+             Kindly note that the API name:${apiName}  for the date: ${dat} was Failed So please try to import it manually from our app </p>
+
+            <p>Thanks,</p>
+                    `}
+        const result =  await transporter.sendMail(Email);
+
+        return result
+
+  
+    }
+    catch(error){
+        return error      
+    }
+  }
 async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
     let resp;
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -101,7 +156,7 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
         }
         if (start <= limit)
             setTimeout(function () {
-                guestChecks(dat, limit, start, token, res);
+                guestChecks(dat, limit, start, body, token, interfaceCode, res);
             }, 3000);
         else {
             console.log(dat,"field");
@@ -115,8 +170,9 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
                     VALUES ('getGuestChecks','${dat}','Failed','${interfaceCode}')
                     END`)
             }
-            else
+            else{
                 res.json({api:"getGuestChecks",date:dat,stats:'Field'})
+            }
         }
         // }
     }
@@ -226,13 +282,13 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
             }
         if (start <= limit)
             setTimeout(function () {
-                guestChecksDetails(dat, limit, start, token, res);
+                guestChecksDetails(dat, limit, start, body, token, interfaceCode, res);
             }, 3000);
         else {
             // status.push({api:'guestChecksDetails',date:dat,stats:'field'})
             if (res==undefined)
                 await request.query(
-                    `IF NOT EXISTS (SELECT * FROM guestChecksDetails
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
                         WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
                         BEGIN
                         INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
@@ -244,7 +300,6 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
 }
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
 async function allForOne(dat, limit, start, apiName, body, token, interfaceCode, res) {
-    // console.log(body);
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
     try {
@@ -329,6 +384,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
     }
     catch (error) {
         start++;
+        start=11
         console.log(error.message);
         if(error.response!=undefined)
             if(error.message.includes('expired')){
@@ -336,18 +392,21 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
             }
         if (start <= limit)
             setTimeout(function () {
-                allForOne(dat, limit, start, apiName, body, token, res);
+                allForOne(dat, limit, start, apiName, body, token, interfaceCode, res);
             }, 3000);
         else {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
+            sendMail(interfaceCode,'getGuestChecks',dat)
+            .then((result)=> console.log('email sent',result))
+            .catch((error)=> console.log(error.message));
             if (res==undefined){
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-                    VALUES (${apiName},'${dat}','Failed','${interfaceCode}')
+                    VALUES ('${apiName}','${dat}','Failed','${interfaceCode}')
                     END`);
             }
             else
@@ -440,7 +499,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
             }
         if (start <= limit)
             setTimeout(function () {
-                allForTwo(dat, limit, start, apiName, body, token, res);
+                allForTwo(dat, limit, start, apiName, body, token, interfaceCode, res);
             }, 3000);
         else {
             console.log(dat,"field");
@@ -739,7 +798,6 @@ module.exports.import = async (req, res) => {
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
                 allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-
             }
             else if(req.body.api=="all"){
                 allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
