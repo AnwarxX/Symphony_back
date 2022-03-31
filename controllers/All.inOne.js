@@ -16,11 +16,10 @@ module.exports.uploadLicense = async (req, res) => {
         let request = new sql.Request(sqlPool)
         let license = JSON.parse(req.body.license)
         let token = license.token
-        // console.log(token);
         var bytes = CryptoJS.AES.decrypt(token, 'lamiaa');
         var originalText = bytes.toString(CryptoJS.enc.Utf8);
         let exDate = JSON.parse(originalText)[0].EndDate
-        // console.log(exDate);
+        //console.log(originalText,"jhj");
         var date1 = new Date();
         var date2 = new Date(exDate);
         if (token == undefined) {
@@ -30,27 +29,27 @@ module.exports.uploadLicense = async (req, res) => {
             res.json({ massage: "license has expired" })
         }
         else {
-            // console.log(exDate,token)
+            //console.log(exDate,token)
+            let t = await request.query(`select * from  license`);
+             console.log(t,t.recordset.length);
             //best to use .getTime() to compare dates
-                if (t.recordset.length == 0) {
-                    //console.log(t.recordset.length,"kjkjj");
-                    let t = await request.query(`select * from  license`);
-                    //console.log(t.recordset.length,"kjkjj");
+              
                     if (t.recordset.length == 0) {
                         await request.query(`insert into license (token) values('${token}')`);
                     }
                     else if (t.recordset.length > 0) {
-                        // console.log(t.recordset.length,"kjkjj");
+                        console.log(t.recordset.length,"kjkjj");
                         //await request.query(`delete * from license `);
                         await request.query(` UPDATE license set token='${token}'
                                   WHERE token =(SELECT token FROM license)`);
                     }
                     res.json({ massage: "License Submited", token: token })//viewing the data which is array of obecjts which is json
 
-                }
+                
             }
          } catch (error) {
                     let x;
+                    console.log(error);
                     if (error.message.includes("Unexpected")) {
                         x = "invalid License"
                     }
