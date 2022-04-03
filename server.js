@@ -7,7 +7,6 @@ var cors = require('cors')
 const bodyparser = require('body-parser');
 //that package helps us to set shared folder path in our project
 const path=require('path');
-
 const app=express();
 app.use(cors())
 //we use body parser to handle the APIs becouse it came in json form 

@@ -15,6 +15,7 @@ const { response } = require('express');
 const qs = require("qs")
 const nodemailer = require("nodemailer");
 const {google} = require('googleapis');
+var CryptoJS = require("crypto-js");
 
 
 const clientId = "488693672463-atpslq7416c2e6v6c014ec9l6vgltecl.apps.googleusercontent.com"
@@ -213,6 +214,10 @@ async function SUN(interfaceCode, dat,res, req) {
         
         const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${interfaceCod} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode='${interfaceCod}'`)
+        let pass =sunCon.recordset[0].SunPassword
+        var bytes = CryptoJS.AES.decrypt(pass, 'hashSun');
+        var SunPassword = bytes.toString(CryptoJS.enc.Utf8);
+        console.log(SunPassword,"ss");
         let MappingCode = buD.recordset[0].MappingCode
         let pk1 = buD.recordset[0].BU
         let SuspenseAccount = buD.recordset[0].SuspenseAccount
@@ -252,7 +257,7 @@ async function SUN(interfaceCode, dat,res, req) {
         console.log(data, LedgerImportDescription, MappingCode);
         const dbConfig = {
             user: sunCon.recordset[0].SunUser,
-            password: sunCon.recordset[0].SunPassword,
+            password: SunPassword,
             server: sunCon.recordset[0].Sunserver,
             database: sunCon.recordset[0].SunDatabase,
             "options": {

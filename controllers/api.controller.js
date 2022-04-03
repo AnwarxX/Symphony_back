@@ -18,6 +18,9 @@ const { res } = require('date-and-time');
 const fs = require('fs')
 const nodemailer = require("nodemailer");
 const {google} = require('googleapis');
+var CryptoJS = require("crypto-js");
+
+
 
 const clientId = "488693672463-atpslq7416c2e6v6c014ec9l6vgltecl.apps.googleusercontent.com"
 const clientSecret = "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"
@@ -705,8 +708,8 @@ async function sched() {
     monthDays={}
     // console.log("interfaceCodes",interfaceCodes);
     for (let i = 0; i < interfaceCodes.length; i++) {
-       console.log("interfaceCode",interfaceCodes[i].interfaceCode);
-        console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
+    //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
+    //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
         let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
         if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
             monthDays[interfaceCodes[i].interfaceCode]=getDaysArray(
@@ -732,7 +735,7 @@ async function sched() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthDays[interfaceCodes[i].interfaceCode]=[dat]
         }
-        console.log("api",interfaceCodes[i].lockRef);
+//console.log("api",interfaceCodes[i].lockRef);
         scJop[interfaceCodes[i].interfaceCode]=
             schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
                 for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode].length; j++) {
@@ -879,8 +882,15 @@ module.exports.authorization = async (req, res) => {
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
     const errors = validationResult(req);
+   
+    var hashApi =  CryptoJS.AES.encrypt(password, 'hashApi').toString()
+    var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
+
+  
+
     if (errors.isEmpty())
         try {
+            //console.log(hashApi);
             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
             let request = new sql.Request(sqlPool)
             resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
@@ -954,6 +964,7 @@ module.exports.authorization = async (req, res) => {
                 break;
             }
             req.body.SunSchedule=runtime
+           
             myDate=new Date(req.body.ApiSchedule)
             switch (req.body.ApiScheduleStatue) {
                 case "apiday": {//every hour
@@ -979,30 +990,50 @@ module.exports.authorization = async (req, res) => {
                     break;
                 }
             req.body.ApiSchedule=runtime
+           
             let  refresh_token =resp2.data.refresh_token
             let columns = ""
             let data = ""
             let check=""
             for (let j = 0; j < Object.keys(req.body).length; j++) {
                 columns += Object.keys(req.body)[j] + ','
+                //console.log(Object.keys(req.body)[j]);
+                if(Object.keys(req.body)[j] == "password" ){
+                    req.body[Object.keys(req.body)[j]]= hashApi
+                }
+                else if(Object.keys(req.body)[j] == "SunPassword" ){
+                    req.body[Object.keys(req.body)[j]]= hashSun
+                }
                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+              
                 if ((req.body[Object.keys(req.body)[j]] == null)) {
+                    if((Object.keys(req.body)[j] != "SunPassword" && Object.keys(req.body)[j] != "password")){
                     check+=Object.keys(req.body)[j]+"=0 and "
+                    }
                     data += "0,"
+                   
                 }
                 else if (typeof (req.body[Object.keys(req.body)[j]]) == "number") {
+                    if((Object.keys(req.body)[j] != "SunPassword" && Object.keys(req.body)[j] != "password")){
+
                     check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" and "
+                    }
                     data += req.body[Object.keys(req.body)[j]] + ","
                 }
-                else{
+                else {
+                    if((Object.keys(req.body)[j] != "SunPassword" &&  Object.keys(req.body)[j] != "password")){
+
                     check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" and "
+                     }
+
                     data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
                 }
             }
             
+
             // console.log(columns);
             // console.log(data);
-            // console.log(check);
+            // console.log(check,"dd");
             // console.log(
             //     `IF NOT EXISTS (SELECT * FROM interfaceDefinition
             //         WHERE ${check.slice(0, -4)})
@@ -1010,9 +1041,10 @@ module.exports.authorization = async (req, res) => {
             //         INSERT INTO interfaceDefinition (${columns}token,refreshToken)
             //         VALUES (${data}'${token}','${refresh_token}')
             //         END`);
-
+        
+            // console.log(check.slice(0, -4));
             const addCase = await request.query(
-                `
+             `
                 begin
                 DECLARE @Isdublicate BIT
                 IF NOT EXISTS (SELECT * FROM interfaceDefinition
@@ -1028,10 +1060,13 @@ module.exports.authorization = async (req, res) => {
                 end
                 end`);
                 const interfaceCode = await request.query(  `select max(interfaceCode) from interfaceDefinition`);
+                console.log(addCase.recordset);
                 if(addCase.recordset==undefined)
-                    await schedPush(req.body.ApiSchedule,req.body.ApiScheduleStatue,interfaceCode.recordset[0][""],req.body.lockRef,token)
+                    {await schedPush(req.body.ApiSchedule,req.body.ApiScheduleStatue,interfaceCode.recordset[0][""],req.body.lockRef,token)
+                    res.json("Submitted successfully");}
+                else
             //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
-            res.json("Submitted successfully");
+                    res.json("Already\texists")
         } catch (error) {
             let x=[]
             if(error.message.includes(400))
@@ -1041,6 +1076,9 @@ module.exports.authorization = async (req, res) => {
             }
             if(error.message.includes('connect'))
                 x.push(error.message)
+            else  x.push(error.message)
+
+            console.log(error.message);
             res.json(x)
         }
     else{
@@ -1049,7 +1087,7 @@ module.exports.authorization = async (req, res) => {
     }
 }
 module.exports.update = async (req, res) => {
-    console.log(req.body);
+   console.log(req.body);
     //job.reschedule(req.body.ApiSchedule);
     let resp;
     let clientId=req.body.clientId
@@ -1061,6 +1099,8 @@ module.exports.update = async (req, res) => {
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
     const errors = validationResult(req);
+    var hashApi =  CryptoJS.AES.encrypt(password, 'hashApi').toString()
+    var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
     if (errors.isEmpty())
         try {
             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -1112,7 +1152,7 @@ module.exports.update = async (req, res) => {
 
             token=resp2.data.id_token
             let runtime;
-            console.log(token);
+            //console.log(token);
             let myDate=new Date(req.body.SunSchedule)
             switch (req.body.SunScheduleStatue) {
                 case "day": {//every hour
@@ -1170,6 +1210,13 @@ module.exports.update = async (req, res) => {
             let data = ""
             let check=""
             for (let j = 0; j < Object.keys(req.body).length; j++) {
+                console.log(req.body[Object.keys(req.body)[j]],"sss");
+                if(Object.keys(req.body)[j] == "password" ){
+                    req.body[Object.keys(req.body)[j]]= hashApi
+                }
+                else if(Object.keys(req.body)[j] == "SunPassword" ){
+                    req.body[Object.keys(req.body)[j]]= hashSun
+                }
                 columns += Object.keys(req.body)[j] + ','
                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
                 if ((req.body[Object.keys(req.body)[j]] == null)) {
@@ -1179,18 +1226,22 @@ module.exports.update = async (req, res) => {
                 else if (typeof (req.body[Object.keys(req.body)[j]]) == "number" && Object.keys(req.body)[j]!='interfaceCode') {
                     check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" , "
                     data += req.body[Object.keys(req.body)[j]] + ","
+
                 }
                 else{
                     if (Object.keys(req.body)[j]!='interfaceCode') {
                         check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" , "
                     }
                     data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+
                 }
             }
-            
+           
             // console.log(columns);
             // console.log(data);
-            console.log(check);
+            // console.log(check,ss);
+           // console.log(check,hash);
+
             console.log(
                 `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
                 where interfaceCode=${req.body.interfaceCode}`);
