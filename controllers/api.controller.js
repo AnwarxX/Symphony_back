@@ -55,7 +55,7 @@ async function sendMail(interfaceCode,apiName,dat) {
       var Email = {
         from: '"ACT All-In-One" <'+transporter.options.auth.user+'> ', // sender address
         to: `"lamiaa.mohamed@act.eg"`,
-        cc: [email.recordset[0].email,"mahmoud.gamal@act.eg"],
+        cc: email.recordset[0].email,
         subject: "ACT  All-in-One", 
         html: `
           <div>
@@ -161,6 +161,9 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
         else {
             console.log(dat,"field");
             // status.push({API:"Guest Checks",date:dat,stats:'field'})
+            sendMail(interfaceCode,'getGuestChecks',dat)
+            .then((result)=> console.log('email sent',result))
+            .catch((error)=> console.log(error.message));
             if (res==undefined){
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -286,7 +289,11 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
             }, 3000);
         else {
             // status.push({api:'guestChecksDetails',date:dat,stats:'field'})
+            
             if (res==undefined)
+            sendMail(interfaceCode,'guestChecksDetails',dat)
+            .then((result)=> console.log('email sent',result))
+            .catch((error)=> console.log(error.message));
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                         WHERE  ApiName='guestChecksDetails' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
@@ -384,11 +391,12 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
     }
     catch (error) {
         start++;
-        start=11
+        
         console.log(error.message);
         if(error.response!=undefined)
             if(error.message.includes('expired')){
                 token=refreshToken(token);
+               
             }
         if (start <= limit)
             setTimeout(function () {
@@ -397,10 +405,11 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
         else {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
-            sendMail(interfaceCode,'getGuestChecks',dat)
-            .then((result)=> console.log('email sent',result))
-            .catch((error)=> console.log(error.message));
+            sendMail(interfaceCode,apiName,dat)
+                .then((result)=> console.log('email sent',result))
+                .catch((error)=> console.log(error.message));
             if (res==undefined){
+                
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
@@ -504,13 +513,16 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
         else {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
+            sendMail(interfaceCode,apiName,dat)
+            .then((result)=> console.log('email sent',result))
+            .catch((error)=> console.log(error.message));
             if (res==undefined){
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}')
                     BEGIN
                     INSERT INTO ImportStatus (ApiName,Date,Status)
-                    VALUES (${apiName},'${dat}','Failed')
+                    VALUES ('${apiName}','${dat}','Failed')
                     END`);
             }
             else
@@ -638,6 +650,9 @@ async function AllMight(dat, limit, start, apiName, body, token, interfaceCode, 
         else {
             console.log(dat,"field");
             // status.push({api:apiName,date:dat,stats:'field'})
+            sendMail(interfaceCode,apiName,dat)
+            .then((result)=> console.log('email sent',result))
+            .catch((error)=> console.log(error.message));
             if (res==undefined){
                 // await request.query(
                     // `IF NOT EXISTS (SELECT * FROM ImportStatus

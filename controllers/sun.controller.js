@@ -13,6 +13,61 @@ const schedule = require('node-schedule');
 const date = require('date-and-time');//call for using date-and-time module 
 const { response } = require('express');
 const qs = require("qs")
+const nodemailer = require("nodemailer");
+const {google} = require('googleapis');
+
+
+const clientId = "488693672463-atpslq7416c2e6v6c014ec9l6vgltecl.apps.googleusercontent.com"
+const clientSecret = "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"
+const redirectURI = "https://developers.google.com/oauthplayground"
+const refresh_token = "1//049fY2PJQc5HwCgYIARAAGAQSNwF-L9IrH6RXcaDvcQrACfTOJRGTTUgg_QYGBI9gj_3hKb4oFzDbnfkb6oUcMjCzSYx8OkqBALw"
+const oAuth2Client = new google.auth.OAuth2(clientId,clientSecret,redirectURI)
+oAuth2Client.setCredentials({refresh_token})
+async function sendMail(interfaceCode,apiName,dat) {
+    try{
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const email = await request.query(`SELECT email FROM interfaceDefinition WHERE interfaceCode=${interfaceCode}`);
+
+      const accrssToken = await oAuth2Client.getAccessToken()
+      const transporter = nodemailer.createTransport({
+  
+        servise: "gmail",
+        host: 'smtp.gmail.com',
+        port: 587,
+        auth: {
+          type:"OAuth2",
+          user: "Actpackageapp@gmail.com",
+          clientId: clientId ,
+          clientSecret:clientSecret,
+          refreshToken:refresh_token,
+          accessToken:accrssToken 
+        }
+
+        
+      });
+      var Email = {
+        from: '"ACT All-In-One" <'+transporter.options.auth.user+'> ', // sender address
+        to: `"lamiaa.mohamed@act.eg"`,
+        cc: email.recordset[0].email,
+        subject: "ACT  All-in-One", 
+        html: `
+          <div>
+             <p>Dear ,</p>
+             Kindly note that the Post data to :${apiName}  for the date: ${dat} was Failed So please try to post it manually from our app </p>
+
+            <p>Thanks,</p>
+                    `}
+        const result =  await transporter.sendMail(Email);
+
+        return result
+
+  
+    }
+    catch(error){
+        return error      
+    }
+  }
 var status = [];
 let sunJop=[]
 let monthSunDays={}
@@ -135,26 +190,27 @@ module.exports.start = async (req, res) => {
     }
 }
 async function SUN(interfaceCode, dat,res, req) {
+    let interfaceCod;
+    let date;
+    if (req == undefined) {
+        // req = {
+        //     body: {
+        //         interfaceCod: "43",
+        //         date: dat
+        //     }
+        // }
+        interfaceCod = interfaceCode;
+        date = dat
+    }
+    else {
+
+        interfaceCod = req.body.interfaceCod;
+        date =req.body.date
+    }
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let interfaceCod;
-        let date;
-        if (req == undefined) {
-            // req = {
-            //     body: {
-            //         interfaceCod: "43",
-            //         date: dat
-            //     }
-            // }
-            interfaceCod = interfaceCode;
-            date = dat
-        }
-        else {
-
-            interfaceCod = req.body.interfaceCod;
-            date =req.body.date
-        }
+        
         const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${interfaceCod} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode='${interfaceCod}'`)
         let MappingCode = buD.recordset[0].MappingCode
@@ -540,7 +596,10 @@ async function SUN(interfaceCode, dat,res, req) {
             res.json("successfully")
         }
     } catch (error) {
-        console.log(error);
+       
+        sendMail(interfaceCod,'Sun',dat)
+        .then((result)=> console.log('email sent',result))
+        .catch((error)=> console.log(error.message));
         await request.query(
         `IF NOT EXISTS (SELECT * FROM ImportStatus
             WHERE  ApiName='Sun' and Date='${dat}' and Status='Failed')
@@ -549,9 +608,9 @@ async function SUN(interfaceCode, dat,res, req) {
             VALUES ('Sun','${dat}','Failed')
             END`)
         if (res != undefined) {
-
-            res.json(error.message)
         }
+        res.json(error.message)
+
     }
 
 
