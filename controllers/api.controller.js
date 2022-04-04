@@ -1388,9 +1388,8 @@ module.exports.postMapping = async (req, res) => {
             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
             let request = new sql.Request(sqlPool)
             //used to establish connection between database and the middleware
-            console.log(req.body);
             //to change the level and Revenue from empty string to null as it should be int 
-        
+            let counter=[]
             for (let i = 0; i < req.body.length; i++) {
                 if (req.body[i].MappingType == 'Account') {
                     req.body[i].Level = null
@@ -1398,15 +1397,28 @@ module.exports.postMapping = async (req, res) => {
                 }
                 //query to insert mapping data(mapp ,value,Revenue,level,inbut) into Mapping table  in  database 
             //const val = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body.MappingCode}','${req.body.mapp}','${req.body.value}','${req.body.Revenue}','${req.body.level}','${req.body.input}')`);
-        
+            console.log(req.body);
             //  const values = await request.query(`insert into Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target) VALUES  ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')`);
             const values = await request.query(
-                `IF NOT EXISTS (SELECT * FROM Mapping
-                    WHERE MappingCode='${req.body[i].MappingCode}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
-                    BEGIN
-                    INSERT INTO Mapping (MappingCode,MappingType,Source,RevenuCenter,ALevel,Target)
-                    VALUES ('${req.body[i].MappingCode}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
-                    END`)
+                `
+                begin
+                DECLARE @Isdublicate BIT
+                IF NOT EXISTS (SELECT * FROM Mapping
+                WHERE MappingCode='${req.body[i].MappingCode}' and locRef='${req.body[i].locRef}' and MappingType='${req.body[i].MappingType}' and Source='${req.body[i].Source}' and RevenuCenter='${req.body[i].RevenuCenter}' and ALevel='${req.body[i].Level}' and Target='${req.body[i].input}')
+                BEGIN
+                INSERT INTO Mapping (MappingCode,locRef,MappingType,Source,RevenuCenter,ALevel,Target)
+                VALUES ('${req.body[i].MappingCode}','${req.body[i].locRef}','${req.body[i].MappingType}','${req.body[i].Source}','${req.body[i].RevenuCenter}','${req.body[i].Level}','${req.body[i].input}')
+                END
+                else
+                begin
+                SET @Isdublicate=0 
+                SELECT @Isdublicate AS 'Isdublicate'
+                end
+                end`)
+                if (values.recordset!=undefined) {
+                    counter.push(i+1)
+                }
+            console.log(values);
             }
             const val = await request.query(
                 `IF NOT EXISTS (SELECT * FROM MappingDefinition
@@ -1416,13 +1428,17 @@ module.exports.postMapping = async (req, res) => {
                     VALUES ('${req.body[0].MappingCode}','${req.body[0].Description}')
                     END`)
             // const val = await request.query(`insert into MappingDefinition (MappingCode,Description) VALUES  ('${req.body[0].MappingCode}','${req.body[0].Description}')`);
-            
-        console.log(req.body[0].MappingCode);
         
         
             //used to close the connection between database and the middleware
-            res.json(req.body)//viewing the data which is array of obecjts which is json 
+            console.log(counter,counter.length,counter.length!=0);
+            if (counter.length!=0) {
+                res.json("lines "+counter.join(",")+" already exists")
+            }
+            else
+                res.json("Submited successfully")//viewing the data which is array of obecjts which is json 
         } catch (error) {
+            console.log(error);
             res.json(error.message)
         }
     else
