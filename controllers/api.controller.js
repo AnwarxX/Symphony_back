@@ -502,12 +502,12 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
     catch (error) {
         start++;
         console.log(error.message);
-        if(error.response!=undefined)
-            if(error.message.includes('expired')){
-                token=refreshToken(token);
-            }
+        // if(error.response!=undefined)
+        //     if(error.message.includes('expired')){
+        //         token=refreshToken(token);
+        //     }
         if (start <= limit)
-            setTimeout(function () {
+        setTimeout(function () {
                 allForTwo(dat, limit, start, apiName, body, token, interfaceCode, res);
             }, 3000);
         else {
@@ -809,10 +809,10 @@ module.exports.import = async (req, res) => {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
             guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
-            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface,res)
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
-                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface,res)
             }
             else if(req.body.api=="all"){
                 allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
@@ -828,16 +828,17 @@ module.exports.import = async (req, res) => {
                 allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
                 allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
                 allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token,req.body.interface)
+                res.json("done")
             }
             else{
-                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface,res)
 
-            }        }
+            }        
+        }
     // }
     // job.reschedule('* * * * * *')
     // getDaysArray("2022-02-20","2022-02-23")
   //  guestChecks("2022-02-23", 10, 1,res)
-  res.json("done")
 }
 module.exports.codes = async (req, res) => {
     try {
@@ -1552,9 +1553,9 @@ module.exports.test = async (req, res) => {
     // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
     // res.json("tables")
     //----------------------------start dynamic schedule----------------------------//
-token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDk2NjIyMjAsImlhdCI6MTY0ODQ1MjYyMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.hecGpEfPD7nRhJy6d-CUmXI-6VdLwvmBDL6q563P7HIjBzadWHVlvS74oa-ecLFRKZ3Zo8WARTu60L-6pJbBIL99ySv1EhvbGAqZ_26c-WQKKx-T8g9F7EqS42rymmAt24AgWCqR6S0BibKzTkYg7vHC0jf2-3QWsd4lovFsTrUHkmkY4KhHioqSsubWn_FVjueGfpwLwzmJgxAIAO3nZk6uNJ5DVXcKBjxyri3Avf5zMNRN7qi-aCFTiZSULyMhNbrmX6_dszJGDuoBdcXjN5tV1Xn5XfUQJ7iI8c6MreY3TnUBpXIU_hPtq5ko179HUNuKmEIbjxIxg1DBKC3M3sWuEUtCY_pci3tdUemH1QUx3mVu-SwYZcZ9xfHBUIA-LoRdDw6oQQPFrLfu7F2vr1OCeVSAKqUDdN9yB_zHCobdj8aVpFZcRcGucyiUmH8raV-c2sL53trY1t24ATDeg4h5A1EiG96ZxpQZQDi0X_QG67buWGXXZ378ZiZin_-4"
+token="aeyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDk2NjIyMjAsImlhdCI6MTY0ODQ1MjYyMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.hecGpEfPD7nRhJy6d-CUmXI-6VdLwvmBDL6q563P7HIjBzadWHVlvS74oa-ecLFRKZ3Zo8WARTu60L-6pJbBIL99ySv1EhvbGAqZ_26c-WQKKx-T8g9F7EqS42rymmAt24AgWCqR6S0BibKzTkYg7vHC0jf2-3QWsd4lovFsTrUHkmkY4KhHioqSsubWn_FVjueGfpwLwzmJgxAIAO3nZk6uNJ5DVXcKBjxyri3Avf5zMNRN7qi-aCFTiZSULyMhNbrmX6_dszJGDuoBdcXjN5tV1Xn5XfUQJ7iI8c6MreY3TnUBpXIU_hPtq5ko179HUNuKmEIbjxIxg1DBKC3M3sWuEUtCY_pci3tdUemH1QUx3mVu-SwYZcZ9xfHBUIA-LoRdDw6oQQPFrLfu7F2vr1OCeVSAKqUDdN9yB_zHCobdj8aVpFZcRcGucyiUmH8raV-c2sL53trY1t24ATDeg4h5A1EiG96ZxpQZQDi0X_QG67buWGXXZ378ZiZin_-4"
     
-allForTwo("2022-03-27", 10, 1, "getMenuItemPrices", { "locRef": "CHGOUNA"}, token)
+await allForTwo("2022-03-27", 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token)
     res.json("done")
 }
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
