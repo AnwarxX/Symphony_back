@@ -27,7 +27,7 @@ const oAuth2Client = new google.auth.OAuth2(clientId,clientSecret,redirectURI)
 oAuth2Client.setCredentials({refresh_token})
 
 var status=[];
-let scJop=[]
+let scJop={}
 let monthDays={}
 async function sendMail(interfaceCode,apiName,dat) {
     try{
@@ -146,7 +146,7 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
                     // status.push({API:"getGuestChecks",date:dat,status:'success'})
         }
         else
-            res.json({api:"getGuestChecks",date:dat,stats:"Successfylly"})
+            res.json("Imported successfully")
     } catch (error) {
         start++;
         console.log(error.message);
@@ -174,7 +174,7 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
                     END`)
             }
             else{
-                res.json({api:"getGuestChecks",date:dat,stats:'Field'})
+                res.json("Failed to Import")
             }
         }
         // }
@@ -387,7 +387,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                         end`)
             }
             else
-                res.json({api:apiName,date:dat,stats:'Successfully'})
+                res.json("Imported successfully")
     }
     catch (error) {
         start++;
@@ -419,7 +419,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                     END`);
             }
             else
-                res.json({api:apiName,date:dat,stats:'Failed'})
+                res.json("Failed to Import")
         }
     }
 }
@@ -497,7 +497,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
                         end`)
             }
             else
-                res.json({api:apiName,date:dat,stats:'Successfully'})
+                res.json("Imported successfully")
     }
     catch (error) {
         start++;
@@ -526,7 +526,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
                     END`);
             }
             else
-                res.json({api:apiName,date:dat,stats:'Failed'})
+                res.json("Failed to Import")
         }
     }
 }
@@ -746,6 +746,7 @@ async function sched() {
                 }
             })
     }
+    console.log(scJop);
 }
 async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
