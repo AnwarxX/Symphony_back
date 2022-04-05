@@ -70,7 +70,7 @@ async function sendMail(interfaceCode,apiName,dat) {
     }
   }
 var status = [];
-let sunJop=[]
+let sunJop={}
 let monthSunDays={}
 schedSun()
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
@@ -118,6 +118,7 @@ async function schedSun() {
             })
         
     }
+    console.log(sunJop);
 }
 async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -130,7 +131,7 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU) {
     //     // apiSch.recordset[0].sunSchedule='* * * * * *'
     //     console.log("api",interfaceCodes[i].SunScheduleStatue,interfaceCodes[i].sunSchedule);
     //     console.log(monthSunDays);
-    sunJop[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=
+    sunJop[interfaceCode+BU]=
         schedule.scheduleJob(sunSchedule, async function () {
             let sunDate=sunSchedule.split(" ")
             if(SunScheduleStatue=="month"){
