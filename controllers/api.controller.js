@@ -132,7 +132,6 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
             //this query is used to insert the vales in thier columns
             // const media = await request.query(`INSERT INTO GuestChecks (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
         }
-        if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE ApiName='getGuestChecks' and Date='${dat}' and interfaceCode='${interfaceCode}')
@@ -144,11 +143,10 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
                     begin
                     UPDATE ImportStatus
                     SET Status = 'Successful'
-                    WHERE ApiName='getGuestChecks' and Date='${dat}'
+                    WHERE ApiName='getGuestChecks' and Date='${dat}' and interfaceCode='${interfaceCode}'
                     end`)
                     // status.push({API:"getGuestChecks",date:dat,status:'success'})
-        }
-        else
+        if (res!=undefined)
             res.json("Imported successfully")
     } catch (error) {
         start++;
@@ -261,7 +259,6 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
             }
         // }
         // status.push({API:"guestChecksDetails",date:dat,status:'success'})
-        if (res==undefined) {
             let status = await request.query(
                 `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='guestChecksDetails' and Date='${dat}' and interfaceCode='${interfaceCode}')
@@ -273,11 +270,10 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
                     begin
                     UPDATE ImportStatus
                     SET Status = 'Successful'
-                    WHERE ApiName='guestChecksDetails' and Date='${dat}'
+                    WHERE ApiName='guestChecksDetails' and Date='${dat}' and interfaceCode='${interfaceCode}'
                     end`)
-        }
-        else{
-            // res.json({api:"guestChecksDetails",date:dat,stats:"Successfylly"})
+        if (res!=undefined){
+            res.json("Imported successfully")
         }
     } catch (error) {
         start++;
@@ -374,22 +370,20 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                 // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
-            if (res==undefined) {
-                let status = await request.query(
-                    `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
-                        BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-                        VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
-                        END
-                        else
-                        begin
-                        UPDATE ImportStatus
-                        SET Status = 'Successful'
-                        WHERE ApiName='${apiName}' and Date='${dat}'
-                        end`)
-            }
-            else
+            let status = await request.query(
+                `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
+                    END
+                    else
+                    begin
+                    UPDATE ImportStatus
+                    SET Status = 'Successful'
+                    WHERE ApiName='${apiName}' and Date='${dat}'
+                    end`)
+            if (res!=undefined)
                 res.json("Imported successfully")
     }
     catch (error) {
@@ -484,27 +478,25 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
                 // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
             }
             // status.push({api:apiName,date:dat,stats:'success'})
-            if (res==undefined) {
-                let status = await request.query(
-                    `IF NOT EXISTS (SELECT * FROM ImportStatus
-                        WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
-                        BEGIN
-                        INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-                        VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
-                        END
-                        else
-                        begin
-                        UPDATE ImportStatus
-                        SET Status = 'Successful'
-                        WHERE ApiName='${apiName}' and Date='${dat}'
-                        end`)
-            }
-            else
+            let status = await request.query(
+                `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+                    VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
+                    END
+                    else
+                    begin
+                    UPDATE ImportStatus
+                    SET Status = 'Successful'
+                    WHERE ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}'
+                    end`)
+            if (res!=undefined)
                 res.json("Imported successfully")
     }
     catch (error) {
         start++;
-        console.log(error.message);
+        console.log(error);
         // if(error.response!=undefined)
         //     if(error.message.includes('expired')){
         //         token=refreshToken(token);
@@ -533,14 +525,53 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
         }
     }
 }
-async function AllMight(dat, limit, start, apiName, body, token, interfaceCode, res) {
-    let z=true; 
+function tree(json,finalJson,key,arrayIndex){
+    for (let i = 0; i < Object.keys(json).length; i++) {
+        if(Array.isArray(json[Object.keys(json)[i]])){
+            for (let j = 0; j < json[Object.keys(json)[i]].length; j++) {
+                if(typeof(json[Object.keys(json)[i]][j])=='object'){
+                    console.log("array",Object.keys(json)[i],json[Object.keys(json)[i]][j],key);
+                    if (key==undefined)
+                        tree(json[Object.keys(json)[i]][j],finalJson,Object.keys(json)[i]+j)
+                    else
+                        tree(json[Object.keys(json)[i]][j],finalJson,key+Object.keys(json)[i]+j)
+                }
+                else{
+                    if (key==undefined)
+                        finalJson[Object.keys(json)[i]+j]=json[Object.keys(json)[i]][j];
+                    else
+                        finalJson[key+Object.keys(json)[i]+j]=json[Object.keys(json)[i]][j];
+                }
+            }
+        }
+        else if (typeof(json[Object.keys(json)[i]])=='object') {
+            console.log("object",Object.keys(json)[i],json[Object.keys(json)[i]],key);
+            if (key==undefined) {
+                tree(json[Object.keys(json)[i]],finalJson,Object.keys(json)[i])
+            }
+            else{
+                tree(json[Object.keys(json)[i]],finalJson,key+Object.keys(json)[i])
+            }
+        }
+        else
+            if(key==undefined){
+                finalJson[Object.keys(json)[i]]=json[Object.keys(json)[i]];
+            }
+            else{
+                finalJson[key+Object.keys(json)[i]]=json[Object.keys(json)[i]];
+            }
+    }
+}
+async function jsonTree(dat, limit, start, apiName, body, token, interfaceCode, res) {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
-        console.log(body);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
+        console.log(apiName,start);
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
+            if (apiName=="getLocationDimensions") {
+                body={}
+            }
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
                 headers: {
                     // 'application/json' is the modern content-type for JSON, but some
@@ -550,105 +581,40 @@ async function AllMight(dat, limit, start, apiName, body, token, interfaceCode, 
                     'Authorization': 'Bearer '+token
                 }
             });
-            let arr=[];
-            let obj=[];
-            let i=0;
-            arr[0]=resp.data;
-            let limit=Object.keys(resp.data).length-1;
-            let c=0;
-            let j=0;
-            while (z==true) {
-                delete arr[j]["workstations"]
-                if (Array.isArray(arr[j][Object.keys(arr[j])[i]])==true) {
-                    limit=Object.keys(arr[j][Object.keys(arr[j])[i]][0]).length+1
-                    for (let k = 0; k < arr[j][Object.keys(arr[j])[i]].length; k++) {
-                        let te=arr[j][Object.keys(arr[j])[i]][k]
-                        for (let s = 0; s < Object.keys(arr[j])[i].length; s++) {
-                            if (s!=i) {
-                                te[Object.keys(arr[j])[s]]=arr[j][Object.keys(arr[j])[s]];
-                            }
-                        }
-                        arr.push(arr[j][Object.keys(arr[j])[i]][k])
-                        if(Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1>limit)
-                            limit=Object.keys(arr[j][Object.keys(arr[j])[i]][k]).length-1
-                    }
-                    delete arr[j][Object.keys(arr[j])[i]]
-                    j++;
-                    i=-1;
-                }
-                if (i==limit) {
-                    z=false
-                }
-                i++;
-            }
-            let max = Object.keys(arr[arr.length-1]).length
-            let oneForAll=[]
-            for (let i = 0; i < arr.length; i++) {
-                if(Object.keys(arr[i]).length==max){
-                    delete arr[i].undefined
-                    oneForAll.push(arr[i])
-                }
-            }
-            for (let i = 0; i < oneForAll.length; i++) {
-                let columns = ""
-                let data = ""
-                let check=""
-                for (let j = 0; j < Object.keys(oneForAll[i]).length; j++) {
-                    columns += Object.keys(oneForAll[i])[j] + ','
-                    // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                    if ((oneForAll[i][Object.keys(oneForAll[i])[j]] == null)) {
-                        check+=Object.keys(oneForAll[i])[j]+"=0 and "
-                        data += "0,"
-                    }
-                    else if (typeof (oneForAll[i][Object.keys(oneForAll[i])[j]]) == "number") {
-                        check+=Object.keys(oneForAll[i])[j]+"="+oneForAll[i][Object.keys(oneForAll[i])[j]] +" and "
-                        data += oneForAll[i][Object.keys(oneForAll[i])[j]] + ","
-                    }
-                    else{
-                        check+=Object.keys(oneForAll[i])[j]+"="+"'"+oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("")+"'"+" and "
-                        // console.log(oneForAll[i][Object.keys(oneForAll[i])[j]],typeof(oneForAll[i][Object.keys(oneForAll[i])[j]]));
-                        data += "'" + oneForAll[i][Object.keys(oneForAll[i])[j]].toString().split("'").join("") + "'" + ","
-                    }
-                }
-                // console.log(columns);
-                // console.log(data);
-                // console.log(check);
-            //     const addCase = await request.query(
-            //         `IF NOT EXISTS (SELECT * FROM ${apiName}
-            //             WHERE ${check.slice(0, -4)})
-            //             BEGIN
-            //             INSERT INTO ${apiName} (${columns.slice(0, -1)})
-            //             VALUES (${data.slice(0, -1)})
-            //             END`);
-            //     // const addCase = await request.query(`INSERT INTO ${apiName} (${columns.slice(0, -1)}) VALUES (${data.slice(0, -1)})`);
-            }
+                // here we asign the response data to a variable called oneforall
+            // console.log(Object.keys(resp));
+            let finalJsonArray=[]
+            console.log(resp.data);
+            let finalJson={}
+            tree(resp.data,finalJson)
+            console.log(finalJson);
             // status.push({api:apiName,date:dat,stats:'success'})
-            // console.log(apiName,start);
-            // if (res==undefined) {
-            //     let status = await request.query(
-            //         `IF NOT EXISTS (SELECT * FROM ImportStatus
-            //             WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Successful')
-            //             BEGIN
-            //             INSERT INTO ImportStatus (ApiName,Date,Status)
-            //             VALUES ('${apiName}','${dat}','Successful')
-            //             END`)
-            // }
-            // else
-                res.json(oneForAll)
+            // let status = await request.query(
+            //     `IF NOT EXISTS (SELECT * FROM ImportStatus
+            //         WHERE  ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}')
+            //         BEGIN
+            //         INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
+            //         VALUES ('${apiName}','${dat}','Successful','${interfaceCode}')
+            //         END
+            //         else
+            //         begin
+            //         UPDATE ImportStatus
+            //         SET Status = 'Successful'
+            //         WHERE ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}'
+            //         end`)
+            if (res!=undefined)
+                res.json("Imported successfully")
     }
     catch (error) {
         start++;
-        console.log(error.message);
-        if(error.message.includes('expired')){
-            token= await refreshToken(token);
-            console.log(token);
-        }
-        if (error.message.includes(400)) {
-            delete body[Object.keys(body)[1]]
-        }
+        console.log(error);
+        // if(error.response!=undefined)
+        //     if(error.message.includes('expired')){
+        //         token=refreshToken(token);
+        //     }
         if (start <= limit)
-            setTimeout(function () {
-                AllMight(dat, limit, start, apiName, body, token, res);
+        setTimeout(function () {
+            jsonTree(dat, limit, start, apiName, body, token, interfaceCode, res);
             }, 3000);
         else {
             console.log(dat,"field");
@@ -657,16 +623,16 @@ async function AllMight(dat, limit, start, apiName, body, token, interfaceCode, 
             .then((result)=> console.log('email sent',result))
             .catch((error)=> console.log(error.message));
             if (res==undefined){
-                // await request.query(
-                    // `IF NOT EXISTS (SELECT * FROM ImportStatus
-                    // WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed')
-                    // BEGIN
-                    // INSERT INTO ImportStatus (ApiName,Date,Status)
-                    // VALUES (${apiName},'${dat}','Failed')
-                    // END`);
+                await request.query(
+                    `IF NOT EXISTS (SELECT * FROM ImportStatus
+                    WHERE  ApiName='${apiName}' and Date='${dat}')
+                    BEGIN
+                    INSERT INTO ImportStatus (ApiName,Date,Status)
+                    VALUES ('${apiName}','${dat}','Failed')
+                    END`);
             }
             else
-                res.json({api:apiName,date:dat,stats:'Failed'})
+                res.json("Failed to Import")
         }
     }
 }
@@ -749,7 +715,6 @@ async function sched() {
                 }
             })
     }
-    console.log(scJop);
 }
 async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -762,7 +727,6 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,tok
     //     // apiSch.recordset[0].ApiSchedule='* * * * * *'
     //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
     //     console.log(monthDays);
-    console.log({ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token});
     scJop[interfaceCode]=
         schedule.scheduleJob(ApiSchedule, async function () {
             let apiDate=ApiSchedule.split(" ")
@@ -1605,11 +1569,26 @@ module.exports.test = async (req, res) => {
     // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
     // res.json("tables")
     //----------------------------start dynamic schedule----------------------------//
-token="aeyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDk2NjIyMjAsImlhdCI6MTY0ODQ1MjYyMCwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.hecGpEfPD7nRhJy6d-CUmXI-6VdLwvmBDL6q563P7HIjBzadWHVlvS74oa-ecLFRKZ3Zo8WARTu60L-6pJbBIL99ySv1EhvbGAqZ_26c-WQKKx-T8g9F7EqS42rymmAt24AgWCqR6S0BibKzTkYg7vHC0jf2-3QWsd4lovFsTrUHkmkY4KhHioqSsubWn_FVjueGfpwLwzmJgxAIAO3nZk6uNJ5DVXcKBjxyri3Avf5zMNRN7qi-aCFTiZSULyMhNbrmX6_dszJGDuoBdcXjN5tV1Xn5XfUQJ7iI8c6MreY3TnUBpXIU_hPtq5ko179HUNuKmEIbjxIxg1DBKC3M3sWuEUtCY_pci3tdUemH1QUx3mVu-SwYZcZ9xfHBUIA-LoRdDw6oQQPFrLfu7F2vr1OCeVSAKqUDdN9yB_zHCobdj8aVpFZcRcGucyiUmH8raV-c2sL53trY1t24ATDeg4h5A1EiG96ZxpQZQDi0X_QG67buWGXXZ378ZiZin_-4"
-    
-await allForTwo("2022-03-27", 10, 1, "getMenuItemDimensions", { "locRef": "CHGOUNA"}, token)
+    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NTAzNTc0ODUsImlhdCI6MTY0OTE0Nzg4NSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.QPmipb4XzJTI3WGVa7__RicG_HctXYK49fWHxm-ZmTYwGVzf8rkQoY_fxfMNsa6DK0W74cpgeJqaxUAbKOP3gj63_iC0owuPiv_JnbRQqkTK1Y71nPAO6Cy7NHfA3TMdMLEK74ecPNmCC_TNCFhbtIWLKTGyKhXMPtOA6yc-6Ku86Gr8QmGEw6SNTTmeRrNXXm1Vz6uJv0xWVJUsknzbojLvXdg2cM8ej6wxNbSrJKr63gI-tuLXm_Tz_yr3xszkFf0E3_nsK_YYQKE5CpyOwJRIG72sdqIEbxwWUhXXCm7sC97xqVWjVGSqtlzZd3ue-IQOfGPJSo1iz0SdsZ51rDYNN221kmtdYLYw_gHze7PtDwEniA7GOSXscnn0dxeYMAMFsvWaPTvoLG173zVepg7cUHSj9E8wrlsjB2xBo2dit3irQYBAp_8Q4DW0BxbEFbTgSW6pwpZ1hSDg3FTRLVlo9X3_dXnEq8-uwTMXVfn6a_9fRz3cCZp1sAjhbU0k"
+    await jsonTree("2022-03-27", 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA","busDt":"2022-03-27"}, token)
     res.json("done")
 }
+let myJson=[
+    {
+        name:'mahmoud',
+        age:24,
+        subject:['arabic','english','germany'],
+        address:{st:'haram',buildingNo:"37"},
+        friends:[{name:'anwar',age:'25'},{name:'nafady',age:'22'}]
+    },
+    {
+        name:['mahmoud','mohamed','ali'],
+        age:24,
+        subject:[{arabic:[1,2,3]},{arabic:[7,8,9]},'english','germany'],
+        address:{st:'haram',buildingNo:"37"},
+        friends:[{name:[{afas:'jfsakfn'},{afas:'jfsakfn213214'}],age:'25'},{name:'nafady',age:'22'}]
+    }
+]
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)
 // console.log(token);

@@ -118,7 +118,6 @@ async function schedSun() {
             })
         
     }
-    console.log(sunJop);
 }
 async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
