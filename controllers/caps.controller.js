@@ -27,9 +27,9 @@ let queries={
     getGuestChecks:`SELECT CheckID, RevCtrID FROM CHECKS`,
     getMenuItemDimensions:`SELECT MajGrpObjNum, ObjectNumber FROM MENU_ITEM_MASTER`,
     getServiceChargeDailyTotals:``,
-    GuestChecksLineDetails:``,
-    getTenderMediaDimensions:``,
-    getTaxDimensions:``,
+    GuestChecksLineDetails:`SELECT Total, DetailPostingTime,ObjectNumber,CheckID FROM CHECK_DETAIL`,
+    getTenderMediaDimensions:`SELECT TendMedID, TendMedType,NameID  FROM TENDER_MEDIA`,
+    getTaxDimensions:`SELECT TaxID, TaxIndex,TaxType  FROM TAX`,
 }
 async function discountDailyTotal(capsName,dat,query) {
     let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
