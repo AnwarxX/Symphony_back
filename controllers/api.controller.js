@@ -279,7 +279,7 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
         start++;
         console.log(error.message);
         if(error.response!=undefined)
-            if(error.message.includes('expired')){
+            if(error.response.data.detail.includes('expired')){
                 token=refreshToken(token);
             }
         if (start <= limit)
@@ -391,7 +391,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
         
         console.log(error.message);
         if(error.response!=undefined)
-            if(error.message.includes('expired')){
+            if(error.response.data.detail.includes('expired')){
                 token=refreshToken(token);
                
             }
@@ -497,10 +497,10 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
     catch (error) {
         start++;
         console.log(error);
-        // if(error.response!=undefined)
-        //     if(error.message.includes('expired')){
-        //         token=refreshToken(token);
-        //     }
+        if(error.response!=undefined)
+            if(error.response.data.detail.includes('expired')){
+                token=refreshToken(token);
+            }
         if (start <= limit)
         setTimeout(function () {
                 allForTwo(dat, limit, start, apiName, body, token, interfaceCode, res);
@@ -527,10 +527,9 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
 }
 function tree(json,finalJson,key,arrayIndex){
     for (let i = 0; i < Object.keys(json).length; i++) {
-        if(Array.isArray(json[Object.keys(json)[i]])){
+        if(Array.isArray(json[Object.keys(json)[i]])&&json[Object.keys(json)[i]]!=null){
             for (let j = 0; j < json[Object.keys(json)[i]].length; j++) {
                 if(typeof(json[Object.keys(json)[i]][j])=='object'){
-                    console.log("array",Object.keys(json)[i],json[Object.keys(json)[i]][j],key);
                     if (key==undefined)
                         tree(json[Object.keys(json)[i]][j],finalJson,Object.keys(json)[i]+j)
                     else
@@ -544,8 +543,7 @@ function tree(json,finalJson,key,arrayIndex){
                 }
             }
         }
-        else if (typeof(json[Object.keys(json)[i]])=='object') {
-            console.log("object",Object.keys(json)[i],json[Object.keys(json)[i]],key);
+        else if (typeof(json[Object.keys(json)[i]])=='object'&&json[Object.keys(json)[i]]!=null) {
             if (key==undefined) {
                 tree(json[Object.keys(json)[i]],finalJson,Object.keys(json)[i])
             }
@@ -561,6 +559,7 @@ function tree(json,finalJson,key,arrayIndex){
                 finalJson[key+Object.keys(json)[i]]=json[Object.keys(json)[i]];
             }
     }
+    console.log(finalJson);
 }
 async function jsonTree(dat, limit, start, apiName, body, token, interfaceCode, res) {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -584,10 +583,9 @@ async function jsonTree(dat, limit, start, apiName, body, token, interfaceCode, 
                 // here we asign the response data to a variable called oneforall
             // console.log(Object.keys(resp));
             let finalJsonArray=[]
-            console.log(resp.data);
             let finalJson={}
+            console.log("Started");
             tree(resp.data,finalJson)
-            console.log(finalJson);
             // status.push({api:apiName,date:dat,stats:'success'})
             // let status = await request.query(
             //     `IF NOT EXISTS (SELECT * FROM ImportStatus
@@ -603,15 +601,15 @@ async function jsonTree(dat, limit, start, apiName, body, token, interfaceCode, 
             //         WHERE ApiName='${apiName}' and Date='${dat}' and interfaceCode='${interfaceCode}'
             //         end`)
             if (res!=undefined)
-                res.json("Imported successfully")
+                res.json(finalJson)
     }
     catch (error) {
         start++;
-        console.log(error);
-        // if(error.response!=undefined)
-        //     if(error.message.includes('expired')){
-        //         token=refreshToken(token);
-        //     }
+        console.log(error.response.data.detail);
+        if(error.response!=undefined)
+            if(error.response.data.detail.includes('expired')){
+                token=refreshToken(interfaceCode);
+            }
         if (start <= limit)
         setTimeout(function () {
             jsonTree(dat, limit, start, apiName, body, token, interfaceCode, res);
@@ -636,12 +634,12 @@ async function jsonTree(dat, limit, start, apiName, body, token, interfaceCode, 
         }
     }
 }
-async function refreshToken(token) {
+async function refreshToken(interfaceCode) {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    x=await request.query(`select token,refreshToken,clientId from interfaceDefinition where interfaceCode ='${interfaceCode}'`);
+    console.log(x);
     try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        x=await request.query(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
-        console.log(`select refreshToken,clientId from interfaceDefinition where token ='${token}'`);
         let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
             scope: "openid", //gave the values directly for testing
             grant_type: "refresh_token",
@@ -659,10 +657,11 @@ async function refreshToken(token) {
         , withCredentials: true });
         y=await request.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
         console.log("refreshed");
-        console.log(resp2.data.id_token);
-        token= resp2.data.id_token;
+        console.log(resp2.data);
+        return resp2.data.id_token;
     } catch (error) {
-        console.log(error.message);
+        console.log(error);
+        return x.recordset[0].token
     }
 }
 sched()
@@ -1569,26 +1568,67 @@ module.exports.test = async (req, res) => {
     // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
     // res.json("tables")
     //----------------------------start dynamic schedule----------------------------//
-    token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NTAzNTc0ODUsImlhdCI6MTY0OTE0Nzg4NSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.QPmipb4XzJTI3WGVa7__RicG_HctXYK49fWHxm-ZmTYwGVzf8rkQoY_fxfMNsa6DK0W74cpgeJqaxUAbKOP3gj63_iC0owuPiv_JnbRQqkTK1Y71nPAO6Cy7NHfA3TMdMLEK74ecPNmCC_TNCFhbtIWLKTGyKhXMPtOA6yc-6Ku86Gr8QmGEw6SNTTmeRrNXXm1Vz6uJv0xWVJUsknzbojLvXdg2cM8ej6wxNbSrJKr63gI-tuLXm_Tz_yr3xszkFf0E3_nsK_YYQKE5CpyOwJRIG72sdqIEbxwWUhXXCm7sC97xqVWjVGSqtlzZd3ue-IQOfGPJSo1iz0SdsZ51rDYNN221kmtdYLYw_gHze7PtDwEniA7GOSXscnn0dxeYMAMFsvWaPTvoLG173zVepg7cUHSj9E8wrlsjB2xBo2dit3irQYBAp_8Q4DW0BxbEFbTgSW6pwpZ1hSDg3FTRLVlo9X3_dXnEq8-uwTMXVfn6a_9fRz3cCZp1sAjhbU0k"
-    await jsonTree("2022-03-27", 10, 1, "getTenderMediaDailyTotals", { "locRef": "CHGOUNA","busDt":"2022-03-27"}, token)
-    res.json("done")
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let interfaceCode=await request.query("SELECT token From interfaceDefinition where interfaceCode=97")
+    token=interfaceCode.recordset[0].token
+    await jsonTree("2022-03-27", 10, 1, "getGuestChecks", { "locRef": "CHGOUNA","clsdBusDt":"2022-03-27"}, token,"97",res)
+    //  res.json(token)
 }
-let myJson=[
+let myJson={
+    curUTC: "2022-04-17T10:17:53",
+    locRef: "CHGOUNA",
+    guestChecks: [
     {
-        name:'mahmoud',
-        age:24,
-        subject:['arabic','english','germany'],
-        address:{st:'haram',buildingNo:"37"},
-        friends:[{name:'anwar',age:'25'},{name:'nafady',age:'22'}]
-    },
+    guestCheckId: 85217246,
+    chkNum: 6690,
+    opnBusDt: "2022-03-27",
+    opnUTC: "2022-03-27T13:39:16",
+    opnLcl: "2022-03-27T15:39:16",
+    clsdBusDt: "2022-03-27",
+    clsdUTC: "2022-03-27T14:45:55",
+    clsdLcl: "2022-03-27T16:45:55",
+    lastUpdatedUTC: "2022-03-27T14:45:55",
+    lastUpdatedLcl: "2022-03-27T16:45:55",
+    clsdFlag: true,
+    gstCnt: 5,
+    subTtl: 1390.5,
+    svcChgTtl: 166.86,
+    nonTxblSlsTtl: null,
+    chkTtl: 1775.39,
+    dscTtl: -154.5,
+    payTtl: 1775.39,
+    balDueTtl: null,
+    rvcNum: 1,
+    otNum: 1,
+    tblNum: 1,
+    tblName: "4B",
+    empNum: 20012,
+    detailLines: [
     {
-        name:['mahmoud','mohamed','ali'],
-        age:24,
-        subject:[{arabic:[1,2,3]},{arabic:[7,8,9]},'english','germany'],
-        address:{st:'haram',buildingNo:"37"},
-        friends:[{name:[{afas:'jfsakfn'},{afas:'jfsakfn213214'}],age:'25'},{name:'nafady',age:'22'}]
+    guestCheckLineItemId: 528330988,
+    lineNum: 2,
+    dtlId: 2,
+    detailUTC: "2022-03-27T13:40:54",
+    detailLcl: "2022-03-27T15:40:54",
+    busDt: "2022-03-27",
+    wsNum: 1,
+    dspTtl: 140,
+    dspQty: 1,
+    aggTtl: 140,
+    aggQty: 1,
+    chkEmpNum: 20012,
+    svcRndNum: 1,
+    menuItem: {
+    miNum: 1002003,
+    activeTaxes: "1",
+    prcLvl: 1
     }
-]
+    }]}]}
+let finalJson={}
+tree(myJson,finalJson)
+console.log(finalJson);
+// console.log(finalJson);
 token="eyJraWQiOiJiMGE0M2ExNy1iNDViLTQ5YzMtODc5Yy1kMDNlOTk3M2NlOWUiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIwOWZmZGY4Yy1kMmEyLTQ1NDMtODgzNS1kMDhlZDI1MWE5NzciLCJhdWQiOiJWbEZETGpNMU16UXlOalJoTFRWbU9EQXRORGs1WXkwNE1qRTBMVEV6T0RReFpUYzNPVEl4Wmc9PSIsImlzcyI6Imh0dHBzOlwvXC93d3cub3JhY2xlLmNvbVwvaW5kdXN0cmllc1wvaG9zcGl0YWxpdHlcL2Zvb2QtYmV2ZXJhZ2UiLCJleHAiOjE2NDc5NDI4NjksImlhdCI6MTY0NjczMzI2OSwidGVuYW50IjoiMDhhMzFhN2QtYTQ5Yi00ZTYxLWE0NzgtOGFiYmVlYTc2Yjc2In0.Yd6mzoLh6kT7tfKKhLDuMyWAknuheZ9q1QFUwGK5bm4-XfY3n0J_UXQXTIBvjEzs5GNKNmpOitAjejhApNs-hXnUsrip8gebRCIKgTEZAZmBOUMYh57U0tAH8Mb5aBL6uJrE2wV2deNfJt8kpDXrPf7v8mNYV8Lgu6VunTchin6bXus5Kz2cPt6kixTWiikdPwSa_eXSaqsagvKLr4H9-ikNrkV9o9ttxsfSq_EEO2bosBYuibmQAbfGDwifQSssj3pVVrUhy0mqJ-gVd9wcPuoHIHVV55B7gLvjGWihM1irc5xMsRPWCWHzD068wPc8l012My_DdY4LfkzQGZPoFclApxWqy5htN6bmz6zIIITdFBgnKCkiRmupi6ZvlOn1OGYQvaZKRFwSAPHfPKi21RMjPt5spU6pFLAPDaQl53ds30JtRXk2zKVg_MuvaO4-Ve-TtOcohSDo0KvnEiBQvFNfrdXJ7xY8nqqFvQ6awqPKhU94s23uH26MqJh6IpaH"
 // refreshToken(token)
 // console.log(token);
