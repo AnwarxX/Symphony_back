@@ -12,6 +12,7 @@ const { response } = require('express');
 const qs = require("qs")
 const apiController=require('../controllers/api.controller')
 const sunController=require('../controllers/sun.controller');
+const capsController=require('../controllers/caps.controller');
 const allInOne =require('../controllers/All.inOne')
 const validation =require('../controllers/validation.controller')
 const req = require('express/lib/request');
