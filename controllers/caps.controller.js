@@ -18,14 +18,14 @@ let queries={
     WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
     and CAST(DetailPostingTime as DATE)='2022-04-20'
     group by RevCtrID`,
-    getTaxDailyTotals:`SELECT CAST(max(CheckClose)AS DATE) AS CheckClose , 
-        RevCtrID , sum(TAX) as TotalTax 
+    getTaxDailyTotals:`SELECT CAST(max(CheckClose)AS DATE) AS busDt , 
+        RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
     FROM CHECKS
     where CAST(CheckClose as DATE)='2022-04-19'
     group by RevCtrID
     `,
-    getGuestChecks:`SELECT CheckID, RevCtrID FROM CHECKS`,
-    getMenuItemDimensions:`SELECT MajGrpObjNum, ObjectNumber FROM MENU_ITEM_MASTER`,
+    getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS`,
+    getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
     getServiceChargeDailyTotals:``,
     GuestChecksLineDetails:`SELECT Total, DetailPostingTime,ObjectNumber,CheckID FROM CHECK_DETAIL`,
     getTenderMediaDimensions:`SELECT TendMedID, TendMedType,NameID  FROM TENDER_MEDIA`,
@@ -68,9 +68,4 @@ async function discountDailyTotal(capsName,dat,query) {
             VALUES (${data.slice(0, -1)})
             END`)
 }
-discountDailyTotal('getTaxDailyTotals','2022-04-18',`
-SELECT CAST(max(CheckClose)AS DATE) AS busDt , 
-      RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
-FROM CHECKS
-where CAST(CheckClose as DATE)='2022-04-15'
-group by RevCtrID`)
+discountDailyTotal('getTaxDailyTotals','2022-04-14',queries.getTaxDailyTotals)
