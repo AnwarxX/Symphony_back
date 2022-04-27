@@ -16,20 +16,20 @@ let queries={
     CHECK_DETAIL.RevCtrID AS RevCtrID , sum(DISCOUNT_ALLOC_DETAIL.Amount) as Amount
     FROM DISCOUNT_ALLOC_DETAIL , CHECK_DETAIL 
     WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
-    and CAST(DetailPostingTime as DATE)='2022-04-20'
+    and CAST(DetailPostingTime as DATE)='2022-04-19'
     group by RevCtrID`,
-    getTaxDailyTotals:`SELECT CAST(max(CheckClose)AS DATE) AS busDt , 
-        RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
+    getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
+    RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
     FROM CHECKS
-    where CAST(CheckClose as DATE)='2022-04-19'
+    where CAST(CheckOpen as DATE)='2022-04-19'
     group by RevCtrID
     `,
     getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS`,
     getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
-    getServiceChargeDailyTotals:``,
-    GuestChecksLineDetails:`SELECT Total, DetailPostingTime,ObjectNumber,CheckID FROM CHECK_DETAIL`,
-    getTenderMediaDimensions:`SELECT TendMedID, TendMedType,NameID  FROM TENDER_MEDIA`,
-    getTaxDimensions:`SELECT TaxID, TaxIndex,TaxType  FROM TAX`,
+    getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='2022-04-19' group by RevCtrID`,
+    GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='2022-04-19'`,
+    getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
+    getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
 }
 async function discountDailyTotal(capsName,dat,query) {
     let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
