@@ -13,12 +13,12 @@ const {google} = require('googleapis');
 const { test } = require('./api.controller');
 const fs = require('fs')
 let queries={
-    getDiscountDailyTotals:`SELECT CAST(max(CHECK_DETAIL.DetailPostingTime)AS DATE) as DetailPostingTime , 
-    CHECK_DETAIL.RevCtrID AS RevCtrID , sum(DISCOUNT_ALLOC_DETAIL.Amount) as Amount
-    FROM DISCOUNT_ALLOC_DETAIL , CHECK_DETAIL 
-    WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
-    and CAST(DetailPostingTime as DATE)='2022-04-19'
-    group by RevCtrID`,
+    getDiscountDailyTotals:`SELECT  max(busDt) , 
+    rvcNum AS RevCtrID , sum(ttl) as Amount
+  FROM [dbo].[AON_SIMPHONY]
+  where   busDt='2022-04-18'
+  group by rvcNum
+`,
     getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
     RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
     FROM CHECKS
@@ -28,7 +28,7 @@ let queries={
     getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS`,
     getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
     getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='2022-04-19' group by RevCtrID`,
-    GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='2022-04-19'`,
+    GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [dbo].[AON_SIMPHONY] where busDt='2022-04-19'`,
     getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
     getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
 }
