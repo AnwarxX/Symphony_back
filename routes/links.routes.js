@@ -36,6 +36,7 @@ appRoutes.get("/codes", apiController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
 appRoutes.get("/", apiController.test)//done
 appRoutes.post("/authorization",validation.authorization, apiController.authorization)//
+appRoutes.post("/sunAuthorization", apiController.sunAuthorization)//
 appRoutes.get("/sunCon", async (req, res) => {
 })
 appRoutes.post('/delete',validation.delete, apiController.delete);//

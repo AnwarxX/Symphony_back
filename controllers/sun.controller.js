@@ -80,7 +80,7 @@ async function schedSun() {
     let interfaceSunCodes=await request.query("SELECT interfaceCode,BU From PropertySettings")
     interfaceSunCodes=interfaceSunCodes.recordset
     for (let i = 0; i < interfaceSunCodes.length; i++) {
-        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From interfaceDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
+        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
         // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
@@ -183,7 +183,7 @@ module.exports.start = async (req, res) => {
         let request = new sql.Request(sqlPool)
         let interfaceCodes=await request.query(`SELECT interfaceCode From PropertySettings where BU='${req.body.BU}'`)
         interfaceCodes=interfaceCodes.recordset
-        let sunSch=await request.query(`SELECT SunSchedule From interfaceDefinition where interfaceCode= '${interfaceCodes[0].interfaceCode}'`)
+        let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where interfaceCode= '${interfaceCodes[0].interfaceCode}'`)
         sunJop[interfaceCodes[0].interfaceCode+req.body.BU].reschedule(sunSch.recordset[0].SunSchedule)
         res.json("Schedule has started")
     }catch (error){
@@ -212,7 +212,7 @@ async function SUN(interfaceCode, dat,res, req) {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         
-        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  interfaceDefinition where interfaceCode=${interfaceCod} `);
+        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sunDefinition where interfaceCode=${interfaceCod} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode='${interfaceCod}'`)
         let pass =sunCon.recordset[0].SunPassword
         var bytes = CryptoJS.AES.decrypt(pass, 'hashSun');
@@ -666,7 +666,7 @@ module.exports.PropertySettings = async (req, res) => {
 					END
                     end`)
             if(values.recordset[0].Isdublicate != false){ 
-            const sunCon = await request.query(`SELECT * From  interfaceDefinition where interfaceCode='${req.body.interfaceCode}' `);
+            const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.interfaceCode}' `);
             //await request.close()
             // console.log(sunCon,sunCon.recordset[0].SunSchedule);
             // let sunConuser = sunCon.recordset[0].SunUser;
@@ -724,7 +724,7 @@ module.exports.test = async (req, res) => {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     // let request = new sql.Request(sqlPool)
     // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
-    // let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${req.body.interfaceCode}`)
+    // let apiSch=await request.query(`SELECT ApiSchedule From sunDefinition where interfaceCode= ${req.body.interfaceCode}`)
     // interfaceCodes=interfaceCodes.recordset
     // let x;
     // for (let i = 0; i < interfaceCodes.length; i++) {

@@ -842,14 +842,14 @@ module.exports.authorization = async (req, res) => {
     let username=req.body.username
     let password=req.body.password
     let orgname=req.body.enterpriseShortName
-    let SunUser = req.body.SunUser
-    let SunPassword = req.body.SunPassword
-    let Sunserver = req.body.Sunserver
-    let SunDatabase = req.body.SunDatabase
+    // let SunUser = req.body.SunUser
+    // let SunPassword = req.body.SunPassword
+    // let Sunserver = req.body.Sunserver
+    // let SunDatabase = req.body.SunDatabase
     const errors = validationResult(req);
    
     var hashApi =  CryptoJS.AES.encrypt(password, 'hashApi').toString()
-    var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
+    // var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
 
   
 
@@ -887,48 +887,48 @@ module.exports.authorization = async (req, res) => {
                     'content-type': 'application/x-www-form-urlencoded'
                 }
             , withCredentials: true });
-            const dbConfig = {
-                user: SunUser,
-                password: SunPassword,
-                server: Sunserver,
-                database: SunDatabase,
-                "options": {
-                "abortTransactionOnError": true,
-                "encrypt": false,
-                "enableArithAbort": true,
-                trustServerCertificate: true
-                },
-                charset: 'utf8'
-            };
+            // const dbConfig = {
+            //     user: SunUser,
+            //     password: SunPassword,
+            //     server: Sunserver,
+            //     database: SunDatabase,
+            //     "options": {
+            //     "abortTransactionOnError": true,
+            //     "encrypt": false,
+            //     "enableArithAbort": true,
+            //     trustServerCertificate: true
+            //     },
+            //     charset: 'utf8'
+            // };
 
             token=resp2.data.id_token
             let runtime;
-            let myDate=new Date(req.body.SunSchedule)
-            switch (req.body.SunScheduleStatue) {
-                case "day": {//every hour
+            // let myDate=new Date(req.body.SunSchedule)
+            // switch (req.body.SunScheduleStatue) {
+            //     case "day": {//every hour
         
-                let hour = req.body.SunSchedule.split(":")[0];
-                let min = req.body.SunSchedule.split(":")[1];
-                runtime = `0 ${min} ${hour} * * *`
-                console.log(runtime);
-                break;
-                }
-                case "year": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-                console.log(runtime);
+            //     let hour = req.body.SunSchedule.split(":")[0];
+            //     let min = req.body.SunSchedule.split(":")[1];
+            //     runtime = `0 ${min} ${hour} * * *`
+            //     console.log(runtime);
+            //     break;
+            //     }
+            //     case "year": {
+            //     runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+            //     console.log(runtime);
         
-                break;
-                }
-                case "month": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-                console.log(runtime);
+            //     break;
+            //     }
+            //     case "month": {
+            //     runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+            //     console.log(runtime);
         
-                break;
-                }
-                default:
-                break;
-            }
-            req.body.SunSchedule=runtime
+            //     break;
+            //     }
+            //     default:
+            //     break;
+            // }
+            // req.body.SunSchedule=runtime
            
             myDate=new Date(req.body.ApiSchedule)
             switch (req.body.ApiScheduleStatue) {
@@ -994,8 +994,6 @@ module.exports.authorization = async (req, res) => {
                     data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
                 }
             }
-            
-
             // console.log(columns);
             // console.log(data);
             // console.log(check,"dd");
@@ -1044,10 +1042,134 @@ module.exports.authorization = async (req, res) => {
             else  x.push(error.message)
 
             console.log(error.message);
-            res.json(x)
+            res.json({x})
         }
     else{
-        console.log(errors);
+        console.log("asfasf",errors);
+        res.json(errors)
+    }
+}
+module.exports.sunAuthorization = async (req, res) => {
+    console.log(req.body);
+    let SunUser = req.body.SunUser
+    let SunPassword = req.body.SunPassword
+    let Sunserver = req.body.Sunserver
+    let SunDatabase = req.body.SunDatabase
+    const errors = validationResult(req);
+    var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
+    if (errors.isEmpty())
+        try {
+            //console.log(hashApi);
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            let runtime;
+            let myDate=new Date(req.body.SunSchedule)
+            switch (req.body.SunScheduleStatue) {
+                case "day": {//every hour
+        
+                let hour = req.body.SunSchedule.split(":")[0];
+                let min = req.body.SunSchedule.split(":")[1];
+                runtime = `0 ${min} ${hour} * * *`
+                console.log(runtime);
+                break;
+                }
+                case "year": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                console.log(runtime);
+        
+                break;
+                }
+                case "month": {
+                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+                console.log(runtime);
+        
+                break;
+                }
+                default:
+                break;
+            }
+            req.body.SunSchedule=runtime
+            let columns = ""
+            let data = ""
+            let check=""
+            for (let j = 0; j < Object.keys(req.body).length; j++) {
+                columns += Object.keys(req.body)[j] + ','
+                //console.log(Object.keys(req.body)[j]);
+                if(Object.keys(req.body)[j] == "password" ){
+                    req.body[Object.keys(req.body)[j]]= hashApi
+                }
+                else if(Object.keys(req.body)[j] == "SunPassword" ){
+                    req.body[Object.keys(req.body)[j]]= hashSun
+                }
+                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+              
+                if ((req.body[Object.keys(req.body)[j]] == null)) {
+                    if((Object.keys(req.body)[j] != "SunPassword" && Object.keys(req.body)[j] != "password")){
+                    check+=Object.keys(req.body)[j]+"=0 and "
+                    }
+                    data += "0,"
+                   
+                }
+                else if (typeof (req.body[Object.keys(req.body)[j]]) == "number") {
+                    if((Object.keys(req.body)[j] != "SunPassword" && Object.keys(req.body)[j] != "password")){
+
+                    check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" and "
+                    }
+                    data += req.body[Object.keys(req.body)[j]] + ","
+                }
+                else {
+                    if((Object.keys(req.body)[j] != "SunPassword" &&  Object.keys(req.body)[j] != "password")){
+
+                    check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" and "
+                     }
+
+                    data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+                }
+            }
+            // console.log(columns);
+            // console.log(data);
+            // console.log(check,"dd");
+            // console.log(
+            //     `IF NOT EXISTS (SELECT * FROM interfaceDefinition
+            //         WHERE ${check.slice(0, -4)})
+            //         BEGIN
+            //         INSERT INTO interfaceDefinition (${columns}token,refreshToken)
+            //         VALUES (${data}'${token}','${refresh_token}')
+            //         END`);
+        
+            // console.log(check.slice(0, -4));
+            const addCase = await request.query(
+             `
+                begin
+                DECLARE @Isdublicate BIT
+                IF NOT EXISTS (SELECT * FROM sunDefinition
+                WHERE ${check.slice(0, -4)})
+                BEGIN
+                INSERT INTO sunDefinition (${columns.slice(0, -1)})
+                VALUES (${data.slice(0, -1)})
+                END
+                else
+                begin
+                SET @Isdublicate=0 
+                SELECT @Isdublicate AS 'Isdublicate'
+                end
+                end`);
+                console.log(addCase.recordset);
+                if(addCase.recordset==undefined)
+                {
+                    res.json("Submitted successfully");
+                }
+                else
+            //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+                    res.json("Already\texists")
+        } catch (error) {
+            let x=[] 
+            x.push(error.message)
+            console.log(error.message);
+            res.json({x})
+        }
+    else{
+        console.log("asfasf",errors);
         res.json(errors)
     }
 }

@@ -32,7 +32,7 @@ let queries={
     getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
     getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
 }
-async function discountDailyTotal(capsName,dat,query,capsConfig) {
+async function discountDailyTotal(capsName,query,capsConfig) {
     console.log(capsConfig);
     let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
     let capsRequest = new sql.Request(capsSqlPool)
@@ -98,4 +98,4 @@ module.exports.addCaps = async (req, res) => {
     else
         res.json("Already\texists")
 }
-// discountDailyTotal('getTaxDailyTotals','2022-04-14',queries.getTaxDailyTotals,capsConfig[0])
+// discountDailyTotal('getTaxDailyTotals',queries.getTaxDailyTotals,capsConfig[0])
