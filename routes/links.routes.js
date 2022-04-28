@@ -64,6 +64,7 @@ appRoutes.get('/getURL',apiController.getURL);
 appRoutes.get('/statusData', apiController.statusData);
 appRoutes.get('/getLisence', allInOne.getLisence);
 appRoutes.get('/capsConigration', capsController.capsConigration);
+appRoutes.post('/addCaps', capsController.addCaps);
 
 
 module.exports = appRoutes;

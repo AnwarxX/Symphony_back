@@ -75,4 +75,27 @@ module.exports.capsConigration = async (req, res) => {
     console.log(await capsConfig.foo());
     res.json(await capsConfig.foo())
 }
+module.exports.addCaps = async (req, res) => {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let addCaps=await request.query(`
+        begin
+        DECLARE @Isdublicate BIT
+        IF NOT EXISTS (SELECT * FROM capsConfig
+        WHERE [user]='${req.body.user}' and password='${req.body.password}' and server='${req.body.server}' and [database]='${req.body.database}')
+        BEGIN
+        INSERT INTO capsConfig ([user],password,server,[database])
+        VALUES ('${req.body.user}','${req.body.password}','${req.body.server}','${req.body.database}')
+        END
+        else
+        begin
+        SET @Isdublicate=0 
+        SELECT @Isdublicate AS 'Isdublicate'
+        end
+        end`)
+    if(addCaps.recordset==undefined)
+        res.json('Submitted successfully')
+    else
+        res.json("Already\texists")
+}
 // discountDailyTotal('getTaxDailyTotals','2022-04-14',queries.getTaxDailyTotals,capsConfig[0])
