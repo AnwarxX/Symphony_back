@@ -11,28 +11,155 @@ const { json } = require('body-parser');
 const nodemailer = require("nodemailer");
 const {google} = require('googleapis');
 const { test } = require('./api.controller');
+const schedule = require('node-schedule');
 const fs = require('fs')
-let queries={
-    getDiscountDailyTotals:`SELECT CAST(max(CHECK_DETAIL.DetailPostingTime)AS DATE) as DetailPostingTime , 
-    CHECK_DETAIL.RevCtrID AS RevCtrID , sum(DISCOUNT_ALLOC_DETAIL.Amount) as Amount
-    FROM DISCOUNT_ALLOC_DETAIL , CHECK_DETAIL 
-    WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
-    and CAST(DetailPostingTime as DATE)='2022-04-19'
-    group by RevCtrID`,
-    getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
-    RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
-    FROM CHECKS
-    where CAST(CheckOpen as DATE)='2022-04-19'
-    group by RevCtrID
-    `,
-    getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS`,
-    getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
-    getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='2022-04-19' group by RevCtrID`,
-    GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='2022-04-19'`,
-    getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
-    getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
+let capsScJop={}
+function queries(date) {
+    return{
+        getDiscountDailyTotals:`SELECT CAST(max(CHECK_DETAIL.DetailPostingTime)AS DATE) as DetailPostingTime , 
+        CHECK_DETAIL.RevCtrID AS RevCtrID , sum(DISCOUNT_ALLOC_DETAIL.Amount) as Amount
+        FROM DISCOUNT_ALLOC_DETAIL , CHECK_DETAIL 
+        WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
+        and CAST(DetailPostingTime as DATE)='${date}'
+        group by RevCtrID`,
+        getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
+        RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
+        FROM CHECKS
+        where CAST(CheckOpen as DATE)='${date}'
+        group by RevCtrID
+        `,
+        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
+        getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
+        getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
+        GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='${date}'`,
+        getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
+        getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
+    }
 }
-async function discountDailyTotal(capsName,query,capsConfig) {
+sched()
+async function sched() {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let capsCodes=await request.query("SELECT * From capsConfig")
+    capsCodes=capsCodes.recordset
+    monthDays={}
+    // console.log("capsCodes",capsCodes);
+    for (let i = 0; i < capsCodes.length; i++) {
+    //    console.log("capsCode",capsCodes[i].capsCode);
+    //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
+        let capsDate=capsCodes[i].capsSchedule.split(" ")
+        if(capsCodes[i].capsScheduleStatus=="month"){
+            monthDays[capsCodes[i].capsCode]=getDaysArray(
+                new Date(new Date(new Date().getFullYear() + "-" +  
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).getMonth()-1)).toISOString(),
+                new Date().getFullYear() + "-" +
+                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]
+            )
+        }
+        else{
+            let dt = new Date();
+            dt.setHours(dt.getHours() + 2);
+            let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+            monthDays[capsCodes[i].capsCode]=[dat]
+        }
+//console.log("api",capsCodes[i].lockRef);
+        capsScJop[capsCodes[i].capsCode]=
+            schedule.scheduleJob('* * * * * *', async function () {
+                try {
+                    for (let j = 0; j < monthDays[capsCodes[i].capsCode].length; j++) {
+                        console.log(capsCodes);
+                        for (let s = 0; s < Object.keys(queries(monthDays[capsCodes[i].capsCode][j])).length; i++) {
+                            // capsTotal(Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s],queries(monthDays[capsCodes[i].capsCode][j])[Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s]],{
+                            //     user: capsCodes[i].user,
+                            //     password: capsCodes[i].password,
+                            //     server: capsCodes[i].server,
+                            //     database: capsCodes[i].database,
+                            //     "options": {
+                            //       "abortTransactionOnError": true,
+                            //       "encrypt": false,
+                            //       "enableArithAbort": true,
+                            //       trustServerCertificate: true
+                            //     },
+                            //     charset: 'utf8'
+                            //   })
+                        }
+                    }
+                } catch (error) {
+                    console.log(error);
+                }
+            })
+    }
+    console.log(monthDays);
+}
+async function schedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,token) {
+    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    // let request = new sql.Request(sqlPool)
+    // let capsCodes=await request.query("SELECT * From interfaceDefinition")
+    // capsCodes=capsCodes.recordset
+    // let monthDays=[]
+    // for (let i = 0; i < capsCodes.length; i++) {
+    //    // console.log(capsCodes[i].capsCode);
+    //     // apiSch.recordset[0].capsSchedule='* * * * * *'
+    //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
+    //     console.log(monthDays);
+    capsScJop[capsCode]=
+        schedule.scheduleJob(capsSchedule, async function () {
+            let capsDate=capsSchedule.split(" ")
+            if(capsScheduleStatue=="month"){
+                monthDays[capsCode]=getDaysArray(
+                    new Date(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).getMonth()-1)).toISOString(),
+                    new Date().getFullYear() + "-" +
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]
+                )
+            }
+            else{
+                let dt = new Date();
+                dt.setHours(dt.getHours() + 2);
+                let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+                monthDays[capsCode]=[dat]
+            }
+            for (let j = 0; j < monthDays[capsCode].length; j++) {
+                for (let s = 0; s < Object.keys(queries(monthDays[capsCodes[i].capsCode][j])).length; i++) {
+                    capsTotal(Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s],queries(monthDays[capsCodes[i].capsCode][j])[Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s]],{
+                        user: capsCodes[i].user,
+                        password: capsCodes[i].password,
+                        server: capsCodes[i].server,
+                        database: capsCodes[i].database,
+                        "options": {
+                          "abortTransactionOnError": true,
+                          "encrypt": false,
+                          "enableArithAbort": true,
+                          trustServerCertificate: true
+                        },
+                        charset: 'utf8'
+                      })
+                    }
+            }
+        })
+    // }
+}
+async function capsTotal(capsName,query,capsConfig) {
     console.log(capsConfig);
     let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
     let capsRequest = new sql.Request(capsSqlPool)
@@ -61,7 +188,8 @@ async function discountDailyTotal(capsName,query,capsConfig) {
             // console.log(x.recordset[0][Object.keys(x.recordset[0])[j]],typeof(x.recordset[0][Object.keys(x.recordset[0])[j]]));
             data += "'" + x.recordset[0][Object.keys(x.recordset[0])[j]].toString().split("'").join("") + "'" + ","
         }
-    }console.log(columns);
+    }
+    console.log(check.slice(0, -4));
     y=await request.query(
         `IF NOT EXISTS (SELECT * FROM ${capsName}
             WHERE ${check.slice(0, -4)})
