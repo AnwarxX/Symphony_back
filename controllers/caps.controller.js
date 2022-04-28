@@ -20,34 +20,17 @@ let queries={
     and CAST(DetailPostingTime as DATE)='2022-04-19'
     group by RevCtrID`,
     getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
-<<<<<<< Updated upstream
     RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
-=======
-        RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
->>>>>>> Stashed changes
     FROM CHECKS
     where CAST(CheckOpen as DATE)='2022-04-19'
     group by RevCtrID
     `,
     getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS`,
     getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
-<<<<<<< Updated upstream
     getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='2022-04-19' group by RevCtrID`,
     GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='2022-04-19'`,
     getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
     getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
-=======
-    getServiceChargeDailyTotals:``,
-    GuestChecksLineDetails:`SELECT [guestChecksId]
-    ,[busDt]
-    ,[miNum]
-    ,[aggTtl]
-    ,[tmedNum]
-FROM [CheckPostingDB].[dbo].[BI_Daily_Sales]
-where busDt='2022-04-19' `,
-    getTenderMediaDimensions:`SELECT TendMedID, TendMedType,NameID  FROM TENDER_MEDIA`,
-    getTaxDimensions:`SELECT TaxID, TaxIndex,TaxType  FROM TAX`,
->>>>>>> Stashed changes
 }
 async function discountDailyTotal(capsName,dat,query,capsConfig) {
     console.log(capsConfig);
