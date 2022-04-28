@@ -1,7 +1,7 @@
 //here we eneter the configration for the connection with database by writing the username , password , database name and the
 //server that can access the database 
 const fs = require('fs')
-let databaseConn=JSON.parse(fs.readFileSync('configuration/config.txt', 'utf8'))
+let databaseConn=JSON.parse(fs.readFileSync('configuration/Configs.txt', 'utf8'))
 const dbConfig = {
   user: databaseConn.user,
   password: databaseConn.password,
