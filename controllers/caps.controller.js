@@ -16,24 +16,24 @@ const fs = require('fs')
 let capsScJop={}
 function queries(date) {
     return{
-        getDiscountDailyTotals:`SELECT CAST(max(CHECK_DETAIL.DetailPostingTime)AS DATE) as DetailPostingTime , 
-        CHECK_DETAIL.RevCtrID AS RevCtrID , sum(DISCOUNT_ALLOC_DETAIL.Amount) as Amount
-        FROM DISCOUNT_ALLOC_DETAIL , CHECK_DETAIL 
-        WHERE DISCOUNT_ALLOC_DETAIL.CheckDetailID=CHECK_DETAIL.CheckDetailID
-        and CAST(DetailPostingTime as DATE)='${date}'
-        group by RevCtrID`,
+        getDiscountDailyTotals:`SELECT  max(busDt) , 
+        rvcNum AS RevCtrID , sum(ttl) as Amount
+        FROM [dbo].[AON_SIMPHONY]
+        where   busDt='${date}'
+        group by rvcNum
+        `,
         getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
         RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
         FROM CHECKS
         where CAST(CheckOpen as DATE)='${date}'
         group by RevCtrID
         `,
-        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
-        getMenuItemDimensions:`SELECT MajGrpObjNum , ObjectNumber FROM MENU_ITEM_MASTER`,
+        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckOpen as clsBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
+        getMenuItemDimensions:`SELECT MajGrpObjNum as majGrpNum, ObjectNumber as num FROM MENU_ITEM_MASTER`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
-        GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [CheckPostingDB].[dbo].[Symphoni_CheckDetails] where busDt='${date}'`,
-        getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber, STRING_TABLE.StringText  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
-        getTaxDimensions:`SELECT TAX.TaxIndex,STRING_TABLE.StringText  FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
+        GuestChecksLineDetails:`SELECT [guestChecksId],[busDt],[miNum],[aggTtl],[tmedNum] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
+        getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
+        getTaxDimensions:`SELECT TAX.TaxIndex as num,STRING_TABLE.StringText as name FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
     }
 }
 sched()
@@ -74,24 +74,24 @@ async function sched() {
         }
 //console.log("api",capsCodes[i].lockRef);
         capsScJop[capsCodes[i].capsCode]=
-            schedule.scheduleJob('* * * * * *', async function () {
+            schedule.scheduleJob(capsCodes[i].capsSchedule, async function () {
+                let tes=capsCodes[i]
                 try {
-                    for (let j = 0; j < monthDays[capsCodes[i].capsCode].length; j++) {
-                        console.log(capsCodes);
-                        for (let s = 0; s < Object.keys(queries(monthDays[capsCodes[i].capsCode][j])).length; i++) {
-                            // capsTotal(Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s],queries(monthDays[capsCodes[i].capsCode][j])[Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s]],{
-                            //     user: capsCodes[i].user,
-                            //     password: capsCodes[i].password,
-                            //     server: capsCodes[i].server,
-                            //     database: capsCodes[i].database,
-                            //     "options": {
-                            //       "abortTransactionOnError": true,
-                            //       "encrypt": false,
-                            //       "enableArithAbort": true,
-                            //       trustServerCertificate: true
-                            //     },
-                            //     charset: 'utf8'
-                            //   })
+                    for (let j = 0; j < monthDays[tes.capsCode].length; j++) {
+                        for (let s = 0; s < Object.keys(queries(monthDays[tes.capsCode][j])).length; s++) {
+                            capsTotal(Object.keys(queries(monthDays[tes.capsCode][j]))[s],queries(monthDays[tes.capsCode][j])[Object.keys(queries(monthDays[tes.capsCode][j]))[s]],{
+                                user: tes.user,
+                                password: tes.password,
+                                server: tes.server,
+                                database: tes.database,
+                                "options": {
+                                  "abortTransactionOnError": true,
+                                  "encrypt": false,
+                                  "enableArithAbort": true,
+                                  trustServerCertificate: true
+                                },
+                                charset: 'utf8'
+                              })
                         }
                     }
                 } catch (error) {
@@ -140,8 +140,8 @@ async function schedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,token)
                 monthDays[capsCode]=[dat]
             }
             for (let j = 0; j < monthDays[capsCode].length; j++) {
-                for (let s = 0; s < Object.keys(queries(monthDays[capsCodes[i].capsCode][j])).length; i++) {
-                    capsTotal(Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s],queries(monthDays[capsCodes[i].capsCode][j])[Object.keys(queries(monthDays[capsCodes[i].capsCode][j]))[s]],{
+                for (let s = 0; s < Object.keys(queries(monthDays[capsCode][j])).length; i++) {
+                    capsTotal(Object.keys(queries(monthDays[capsCode][j]))[s],queries(monthDays[capsCode][j])[Object.keys(queries(monthDays[capsCode][j]))[s]],{
                         user: capsCodes[i].user,
                         password: capsCodes[i].password,
                         server: capsCodes[i].server,
@@ -169,7 +169,7 @@ async function capsTotal(capsName,query,capsConfig) {
     let columns = ""
     let data = ""
     let check=""
-    z=await (await request.query(`SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('${capsName}')`)).recordset;
+    console.log(x.recordset[0]);
     for (let j = 0; j < Object.keys(x.recordset[0]).length; j++) {
         columns += Object.keys(x.recordset[0])[j] + ','
         if (typeof(x.recordset[0][Object.keys(x.recordset[0])[j]])=='object') {
@@ -189,7 +189,12 @@ async function capsTotal(capsName,query,capsConfig) {
             data += "'" + x.recordset[0][Object.keys(x.recordset[0])[j]].toString().split("'").join("") + "'" + ","
         }
     }
-    console.log(check.slice(0, -4));
+    console.log(`IF NOT EXISTS (SELECT * FROM ${capsName}
+        WHERE ${check.slice(0, -4)})
+        BEGIN
+        INSERT INTO ${capsName} (${columns.slice(0, -1)})
+        VALUES (${data.slice(0, -1)})
+        END`);
     y=await request.query(
         `IF NOT EXISTS (SELECT * FROM ${capsName}
             WHERE ${check.slice(0, -4)})
