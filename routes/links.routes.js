@@ -33,6 +33,8 @@ res.json(resp.data)
 })
 appRoutes.post("/importSun",validation.importSun, sunController.importSun)//donr
 appRoutes.get("/codes", apiController.codes)
+appRoutes.get("/sunCodes", sunController.codes)
+appRoutes.get("/capsCodes", capsController.codes)
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
 appRoutes.get("/", apiController.test)//done
 appRoutes.post("/authorization",validation.authorization, apiController.authorization)//

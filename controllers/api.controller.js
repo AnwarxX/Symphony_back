@@ -32,6 +32,8 @@ oAuth2Client.setCredentials({refresh_token})
 var status=[];
 let scJop={}
 let monthDays={}
+let x=CryptoJS.AES.encrypt(`[{"product":"Symphony","LockRef":"CHGOUNA","EnterpriseShortName":"Vaquero Company","EndDate":"2022-05-30T14:07"}]`, 'lamiaa')
+console.log(x.toString());
 async function sendMail(interfaceCode,apiName,dat) {
     try{
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -655,7 +657,7 @@ async function refreshToken(interfaceCode) {
                 'content-type': 'application/x-www-form-urlencoded'
             }
         , withCredentials: true });
-        y=await request.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}'  where token ='${token}'`);
+        y=await request.query(`update interfaceDefinition set refreshToken='${resp2.data.refresh_token}',token='${resp2.data.id_token}' where interfaceCode ='${interfaceCode}'`);
         console.log("refreshed");
         console.log(resp2.data);
         return resp2.data.id_token;
@@ -953,7 +955,7 @@ module.exports.authorization = async (req, res) => {
                 }
                 default:
                     break;
-                }
+            }
             req.body.ApiSchedule=runtime
            
             let  refresh_token =resp2.data.refresh_token
@@ -1690,11 +1692,11 @@ module.exports.test = async (req, res) => {
     // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
     // res.json("tables")
     //----------------------------start dynamic schedule----------------------------//
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    let interfaceCode=await request.query("SELECT token From interfaceDefinition where interfaceCode=97")
-    token=interfaceCode.recordset[0].token
-    await jsonTree("2022-03-27", 10, 1, "getGuestChecks", { "locRef": "CHGOUNA","clsdBusDt":"2022-03-27"}, token,"97",res)
+    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    // let request = new sql.Request(sqlPool)
+    // let interfaceCode=await request.query("SELECT token From interfaceDefinition where interfaceCode=97")
+    // token=interfaceCode.recordset[0].token
+    // await jsonTree("2022-03-27", 10, 1, "getGuestChecks", { "locRef": "CHGOUNA","clsdBusDt":"2022-03-27"}, token,"97",res)
     //  res.json(token)
 }
 let myJson={

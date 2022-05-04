@@ -740,4 +740,14 @@ module.exports.test = async (req, res) => {
     SUN(51,"2022-03-28")
     res.json("done")
 }
+module.exports.codes = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCode = await request.query(`SELECT interfaceCode From interfaceDefinition EXCEPT SELECT interfaceCode From sundefinition where definitionType='api'`);
+       res.json({interface:interfaseCode.recordset})
+    } catch (error) {
+        res.json(error.message)
+    }
+}
 
