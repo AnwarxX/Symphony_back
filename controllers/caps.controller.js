@@ -281,4 +281,14 @@ module.exports.codes = async (req, res) => {
         res.json(error.message)
     }
 }
+module.exports.getCAPS = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const capsview = await request.query(`SELECT  * From capsConfig`);
+        res.json(capsview.recordset)
+    } catch (error) {
+        res.json(error.message)
+    }
+}
 // discountDailyTotal('getTaxDailyTotals',queries.getTaxDailyTotals,capsConfig[0])
