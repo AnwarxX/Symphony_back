@@ -44,8 +44,6 @@ module.exports.uploadLicense = async (req, res) => {
                                   WHERE token =(SELECT token FROM license)`);
                     }
                     res.json({ massage: "License Submited", token: token })//viewing the data which is array of obecjts which is json
-
-                
             }
          } catch (error) {
                     let x;
@@ -73,6 +71,52 @@ module.exports.getLisence = async (req, res) => {
             res.json("please uplode license")
 
         }
+    }
+    catch (error) {
+        res.json(error.message)
+    }
+}
+module.exports.getInterfaceDeinition = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let suncodes = await (await request.query(`select SunCode from sundefinition`)).recordset
+        let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
+        let apicodes = await (await request.query(`select interfaceCode from interfaceDefinition`)).recordset
+        let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
+        let capscodes = await (await request.query(`select capsCode from capsConfig`)).recordset
+        res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
+    }
+    catch (error) {
+        res.json(error.message)
+    }
+}
+module.exports.setInterfaceDeinition = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let setInterfaceDeinition=await request.query(`
+        begin
+        DECLARE @Isdublicate BIT
+        IF NOT EXISTS (SELECT * FROM capsConfig
+        WHERE [sunCode]='${req.body.sunCode}' and apiCode='${req.body.apiCode}' and capsCode='${req.body.CapscapsCodeserver}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
+        BEGIN
+        INSERT INTO [dbo].[interfaceConnections] ([sunCode],[apiCode],[capsCode],[mappCode],[BUCode])
+        VALUES (${req.body.sunCode},${req.body.apiCode},${req.body.capsCode},${req.body.mappCode},${req.body.BUCode})
+        END
+        else
+        begin
+        SET @Isdublicate=0 
+        SELECT @Isdublicate AS 'Isdublicate'
+        end
+        end`)
+        
+        if(setInterfaceDeinition.recordset==undefined){
+            res.json('Submitted successfully')
+        }
+        else
+            res.json("Already\texists")
+        
     }
     catch (error) {
         res.json(error.message)

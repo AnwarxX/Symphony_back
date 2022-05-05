@@ -73,7 +73,9 @@ appRoutes.post('/addCaps', capsController.addCaps);
 appRoutes.get('/getCAPS', capsController.getCAPS);
 appRoutes.get("/capsCodes", capsController.codes)
 appRoutes.post("/deleteCaps", capsController.Delete)
-appRoutes.post("/updateCaps", capsController.update)
+appRoutes.post("/updateCaps", capsController.update);
+appRoutes.get("/getInterfaceDeinition", allInOne.getInterfaceDeinition);
+appRoutes.get("/setInterfaceDeinition", allInOne.setInterfaceDeinition);
 
 
 module.exports = appRoutes;
