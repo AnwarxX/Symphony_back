@@ -291,4 +291,24 @@ module.exports.getCAPS = async (req, res) => {
         res.json(error.message)
     }
 }
+module.exports.Delete = async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            console.log(req.body);
+            //query to delete mapping data from Mapping table  in  database 
+            const values = await request.query(`delete from capsConfig Where capsCode='${req.body.capsCode}'`);
+            console.log(`delete from capsConfig Where capsCode='${req.body.capsCode}'`);
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+}
 // discountDailyTotal('getTaxDailyTotals',queries.getTaxDailyTotals,capsConfig[0])
