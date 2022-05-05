@@ -77,15 +77,16 @@ function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(
 async function schedSun() {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
-    let interfaceSunCodes=await request.query("SELECT interfaceCode,BU From PropertySettings")
+    let interfaceSunCodes=await request.query("SELECT * From interfaceConnections")
+    console.log(interfaceSunCodes);
     interfaceSunCodes=interfaceSunCodes.recordset
     for (let i = 0; i < interfaceSunCodes.length; i++) {
-        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].interfaceCode)}`)
+        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
         // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
-            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=getDaysArray(
+            monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=getDaysArray(
                 new Date(new Date(new Date().getFullYear() + "-" +  
                 (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                 ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
@@ -106,14 +107,14 @@ async function schedSun() {
             let dt = new Date();
             dt.setHours(dt.getHours() + 2);
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=[dat]
+            monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=[dat]
         }
-        // console.log("monthSunDays",monthSunDays);
-        sunJop[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU]=
+        console.log("monthSunDays",monthSunDays);
+        sunJop[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
-                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU].length; j++) {
+                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode].length; j++) {
                    // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
-                    await SUN(interfaceSunCodes[i].interfaceCode,monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j])
+                    await SUN(interfaceSunCodes[i].apiCode,monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode][j])
                 }
             })
         
@@ -631,6 +632,38 @@ module.exports.importSun = async (req, res) => {
         }
     else
         res.json(errors)
+}
+module.exports.setInterfaceDeinition = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let setInterfaceDeinition=await request.query(`
+        begin
+        DECLARE @Isdublicate BIT
+        IF NOT EXISTS (SELECT * FROM interfaceConnections
+        WHERE [sunCode]='${req.body.sunCode}' and interfaceCode='${req.body.interfaceCode}' and type='${req.body.type}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
+        BEGIN
+        INSERT INTO [dbo].[interfaceConnections] ([sunCode],[interfaceCode],[type],[mappCode],[BUCode])
+        VALUES (${req.body.sunCode},${req.body.interfaceCode},${req.body.type},${req.body.mappCode},${req.body.BUCode})
+        END
+        else
+        begin
+        SET @Isdublicate=0 
+        SELECT @Isdublicate AS 'Isdublicate'
+        end
+        end`)
+        const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.sunCode}' `);
+        if(setInterfaceDeinition.recordset==undefined){
+            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,req.body.apiCode ,req.body.BUCode)
+            res.json('Submitted successfully')
+        }
+        else
+            res.json("Already\texists")
+        
+    }
+    catch (error) {
+        res.json(error.message)
+    }
 }
 module.exports.PropertySettings = async (req, res) => {
     const errors = validationResult(req);

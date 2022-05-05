@@ -91,34 +91,3 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         res.json(error.message)
     }
 }
-module.exports.setInterfaceDeinition = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        let setInterfaceDeinition=await request.query(`
-        begin
-        DECLARE @Isdublicate BIT
-        IF NOT EXISTS (SELECT * FROM capsConfig
-        WHERE [sunCode]='${req.body.sunCode}' and apiCode='${req.body.apiCode}' and capsCode='${req.body.CapscapsCodeserver}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
-        BEGIN
-        INSERT INTO [dbo].[interfaceConnections] ([sunCode],[apiCode],[capsCode],[mappCode],[BUCode])
-        VALUES (${req.body.sunCode},${req.body.apiCode},${req.body.capsCode},${req.body.mappCode},${req.body.BUCode})
-        END
-        else
-        begin
-        SET @Isdublicate=0 
-        SELECT @Isdublicate AS 'Isdublicate'
-        end
-        end`)
-        
-        if(setInterfaceDeinition.recordset==undefined){
-            res.json('Submitted successfully')
-        }
-        else
-            res.json("Already\texists")
-        
-    }
-    catch (error) {
-        res.json(error.message)
-    }
-}

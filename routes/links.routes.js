@@ -75,7 +75,7 @@ appRoutes.get("/capsCodes", capsController.codes)
 appRoutes.post("/deleteCaps", capsController.Delete)
 appRoutes.post("/updateCaps", capsController.update);
 appRoutes.get("/getInterfaceDeinition", allInOne.getInterfaceDeinition);
-appRoutes.get("/setInterfaceDeinition", allInOne.setInterfaceDeinition);
+appRoutes.get("/setInterfaceDeinition", sunController.setInterfaceDeinition);
 
 
 module.exports = appRoutes;
