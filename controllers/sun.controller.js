@@ -654,8 +654,8 @@ module.exports.PropertySettings = async (req, res) => {
                 IF NOT EXISTS (SELECT * FROM PropertySettings
                     WHERE BU='${req.body.BU}')
                     BEGIN
-                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,interfaceCode,MappingCode)
-                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}','${req.body.interfaceCode}','${req.body.MappingCode}')
+                    INSERT INTO PropertySettings (BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount)
+                    VALUES ('${req.body.BU}','${req.body.JournalType}','${req.body.Currencycode}','${req.body.LedgerImportDescription}','${req.body.SuspenseAccount}')
 					SET @Isdublicate=1
 					SELECT @Isdublicate AS 'Isdublicate'
                     END
@@ -666,7 +666,7 @@ module.exports.PropertySettings = async (req, res) => {
 					END
                     end`)
             if(values.recordset[0].Isdublicate != false){ 
-            const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.interfaceCode}' `);
+            // const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.interfaceCode}' `);
             //await request.close()
             // console.log(sunCon,sunCon.recordset[0].SunSchedule);
             // let sunConuser = sunCon.recordset[0].SunUser;
@@ -686,9 +686,9 @@ module.exports.PropertySettings = async (req, res) => {
             //     },
             //     charset: 'utf8'
             // };
-            let interfaceCode = req.body.interfaceCode
-            console.log(interfaceCode)
-            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,interfaceCode ,req.body.BU)
+            // let interfaceCode = req.body.interfaceCode
+            // console.log(interfaceCode)
+            // schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,interfaceCode ,req.body.BU)
            // await request.close()
             //used to close the connection between database and the middleware
             res.json("submitted sucssufuly ")//viewing the data which is array of obecjts which is json
