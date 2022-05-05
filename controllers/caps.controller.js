@@ -311,4 +311,25 @@ module.exports.Delete = async (req, res) => {
         res.json(errors)
     }
 }
+module.exports.update = async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            //used to establish connection between database and the middleware
+            //query to delete mapping data from Mapping table  in  database 
+            const values = await request.query(`update  capsConfig set user='${req.body.user}',password='${req.body.password}',server='${req.body.server}',database='${req.body.database}',locRef='${req.body.locRef}',capsSchedule='${req.body.capsSchedule}',capsScheduleStatus='${req.body.capsScheduleStatus}'
+            Where capsCode='${req.body.capsCode}'`);
+            console.log(`update  capsConfig set user='${req.body.user}',password='${req.body.password}',server='${req.body.server}',database='${req.body.database}',locRef='${req.body.locRef}',capsSchedule='${req.body.capsSchedule}',capsScheduleStatus='${req.body.capsScheduleStatus}'
+            Where capsCode='${req.body.capsCode}'`);
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+}
 // discountDailyTotal('getTaxDailyTotals',queries.getTaxDailyTotals,capsConfig[0])

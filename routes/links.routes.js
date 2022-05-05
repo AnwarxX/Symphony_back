@@ -73,6 +73,7 @@ appRoutes.post('/addCaps', capsController.addCaps);
 appRoutes.get('/getCAPS', capsController.getCAPS);
 appRoutes.get("/capsCodes", capsController.codes)
 appRoutes.post("/deleteCaps", capsController.Delete)
+appRoutes.post("/updateCaps", capsController.update)
 
 
 module.exports = appRoutes;
