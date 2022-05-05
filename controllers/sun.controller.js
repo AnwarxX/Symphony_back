@@ -81,12 +81,12 @@ async function schedSun() {
     console.log(interfaceSunCodes);
     interfaceSunCodes=interfaceSunCodes.recordset
     for (let i = 0; i < interfaceSunCodes.length; i++) {
-        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where interfaceCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
+        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
         // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
-            monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=getDaysArray(
+            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=getDaysArray(
                 new Date(new Date(new Date().getFullYear() + "-" +  
                 (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                 ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
@@ -107,14 +107,14 @@ async function schedSun() {
             let dt = new Date();
             dt.setHours(dt.getHours() + 2);
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=[dat]
+            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=[dat]
         }
         console.log("monthSunDays",monthSunDays);
-        sunJop[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode]=
+        sunJop[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
-                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode].length; j++) {
+                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type].length; j++) {
                    // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
-                    await SUN(interfaceSunCodes[i].apiCode,monthSunDays[interfaceSunCodes[i].apiCode+interfaceSunCodes[i].BUCode][j])
+                    await SUN(interfaceSunCodes[i].interfaceCode,monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type][j])
                 }
             })
         
