@@ -24,46 +24,50 @@ const redirectURI = "https://developers.google.com/oauthplayground"
 const refresh_token = "1//049fY2PJQc5HwCgYIARAAGAQSNwF-L9IrH6RXcaDvcQrACfTOJRGTTUgg_QYGBI9gj_3hKb4oFzDbnfkb6oUcMjCzSYx8OkqBALw"
 const oAuth2Client = new google.auth.OAuth2(clientId,clientSecret,redirectURI)
 oAuth2Client.setCredentials({refresh_token})
-async function sendMail(interfaceCode,apiName,dat) {
+async function sendMail(interfaceCode,type,apiName,dat) {
     try{
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        const email = await request.query(`SELECT email FROM interfaceDefinition WHERE interfaceCode=${interfaceCode}`);
-
-      const accrssToken = await oAuth2Client.getAccessToken()
-      const transporter = nodemailer.createTransport({
-  
-        servise: "gmail",
-        host: 'smtp.gmail.com',
-        port: 587,
-        auth: {
-          type:"OAuth2",
-          user: "Actpackageapp@gmail.com",
-          clientId: clientId ,
-          clientSecret:clientSecret,
-          refreshToken:refresh_token,
-          accessToken:accrssToken 
+        if (type=='api') {
+            const email = await request.query(`SELECT email FROM interfaceDefinition WHERE interfaceCode=${interfaceCode}`);
+    
+          const accrssToken = await oAuth2Client.getAccessToken()
+          const transporter = nodemailer.createTransport({
+      
+            servise: "gmail",
+            host: 'smtp.gmail.com',
+            port: 587,
+            auth: {
+              type:"OAuth2",
+              user: "Actpackageapp@gmail.com",
+              clientId: clientId ,
+              clientSecret:clientSecret,
+              refreshToken:refresh_token,
+              accessToken:accrssToken 
+            }
+    
+            
+          });
+          var Email = {
+            from: '"ACT All-In-One" <'+transporter.options.auth.user+'> ', // sender address
+            to: `"lamiaa.mohamed@act.eg"`,
+            cc: email.recordset[0].email,
+            subject: "ACT  All-in-One", 
+            html: `
+              <div>
+                 <p>Dear ,</p>
+                 Kindly note that the Post data to :${apiName}  for the date: ${dat} was Failed So please try to post it manually from our app </p>
+    
+                <p>Thanks,</p>
+                        `}
+            const result =  await transporter.sendMail(Email);
+    
+            return result
+    
+      
         }
-
-        
-      });
-      var Email = {
-        from: '"ACT All-In-One" <'+transporter.options.auth.user+'> ', // sender address
-        to: `"lamiaa.mohamed@act.eg"`,
-        cc: email.recordset[0].email,
-        subject: "ACT  All-in-One", 
-        html: `
-          <div>
-             <p>Dear ,</p>
-             Kindly note that the Post data to :${apiName}  for the date: ${dat} was Failed So please try to post it manually from our app </p>
-
-            <p>Thanks,</p>
-                    `}
-        const result =  await transporter.sendMail(Email);
-
-        return result
-
-  
+        else
+            return 0;
     }
     catch(error){
         return error      
@@ -81,8 +85,8 @@ async function schedSun() {
     interfaceSunCodes=interfaceSunCodes.recordset
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
+        console.log("sunSch",interfaceSunCodes[i].sunCode);
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
-        // console.log("interfaceCode",interfaceSunCodes[i].interfaceCode);
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=getDaysArray(
@@ -208,12 +212,12 @@ async function SUN(interfaceCode, dat,res, req) {
         interfaceCod = req.body.interfaceCod;
         date =req.body.date
     }
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
     try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
         let connectionCode=await request.query(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `)
         const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sunDefinition where sunCode=${connectionCode.recordset[0].sunCode} `);
-        const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount,MappingCode from PropertySettings where interfaceCode='${connectionCode.recordset[0].BUCode}'`)
+        const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where BU='${connectionCode.recordset[0].BUCode}'`)
         let pass =sunCon.recordset[0].SunPassword
         var bytes = CryptoJS.AES.decrypt(pass, 'hashSun');
         var SunPassword = bytes.toString(CryptoJS.enc.Utf8);
@@ -254,7 +258,6 @@ async function SUN(interfaceCode, dat,res, req) {
     left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9  and T09.MappingCode = '${MappingCode}'
     left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10  and T10.MappingCode = '${MappingCode}'`)
         data = data.recordset
-        console.log(data, LedgerImportDescription, MappingCode);
         const dbConfig = {
             user: sunCon.recordset[0].SunUser,
             password: SunPassword,
@@ -268,8 +271,10 @@ async function SUN(interfaceCode, dat,res, req) {
             },
             charset: 'utf8'
         };
+        console.log(dbConfig);
         let sqlPoolSun = await mssql.GetCreateIfNotExistPool(dbConfig)
         let requestSun = new sql.Request(sqlPoolSun)
+        console.log("safjioasf");
         // let HDR_I = await sql.query(`SELECT max(PSTG_HDR_ID) FROM ${pk1}_PSTG_HDR where  DESCR='HRMS'`)
         // console.log(HDR_I);
         //                    HDR_I = HDR_I.recordsets[0].PSTG_HDR_ID;
@@ -601,8 +606,9 @@ async function SUN(interfaceCode, dat,res, req) {
             res.json("successfully")
         }
     } catch (error) {
-       
-        sendMail(interfaceCod,'Sun',dat)
+       console.log("\x1b[31m",error.message);
+       let connectionCode=await request.query(`SELECT interfaceCode,type From  interfaceConnections where connectionCode=${interfaceCod} `)
+        sendMail(connectionCode.recordset[0].interfaceCode,connectionCode.recordset[0].type,'Sun',dat)
         .then((result)=> console.log('email sent',result))
         .catch((error)=> console.log(error.message));
         await request.query(
@@ -613,8 +619,8 @@ async function SUN(interfaceCode, dat,res, req) {
             VALUES ('Sun','${dat}','Failed')
             END`)
         if (res != undefined) {
+            res.json(error.message)
         }
-        res.json(error.message)
 
     }
 
@@ -626,7 +632,7 @@ module.exports.importSun = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
         try {
-            await SUN(req.body.interfaceCode, req.body.date, res, req)
+            await SUN(req.body.connectionCode, req.body.date, res, req)
         } catch (error) {
             res.json(error.message)
         }
@@ -641,10 +647,10 @@ module.exports.setInterfaceDeinition = async (req, res) => {
         begin
         DECLARE @Isdublicate BIT
         IF NOT EXISTS (SELECT * FROM interfaceConnections
-        WHERE [sunCode]='${req.body.sunCode}' and interfaceCode='${req.body.interfaceCode}' and type='${req.body.type}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
+        WHERE [sunCode]=${req.body.sunCode} and interfaceCode=${req.body.interfaceCode} and type='${req.body.type}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
         BEGIN
         INSERT INTO [dbo].[interfaceConnections] ([sunCode],[interfaceCode],[type],[mappCode],[BUCode])
-        VALUES (${req.body.sunCode},${req.body.interfaceCode},${req.body.type},${req.body.mappCode},${req.body.BUCode})
+        VALUES (${req.body.sunCode},${req.body.interfaceCode},'${req.body.type}','${req.body.mappCode}','${req.body.BUCode}')
         END
         else
         begin
@@ -652,9 +658,10 @@ module.exports.setInterfaceDeinition = async (req, res) => {
         SELECT @Isdublicate AS 'Isdublicate'
         end
         end`)
-        const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.sunCode}' `);
+        const sunCon = await request.query(`SELECT * From  sunDefinition where sunCode='${req.body.sunCode}' `);
         if(setInterfaceDeinition.recordset==undefined){
-            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,req.body.apiCode ,req.body.BUCode)
+            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,req.body.interfaceCode ,req.body.BUCode,req.body.type)
+            console.log(sunJop);
             res.json('Submitted successfully')
         }
         else
