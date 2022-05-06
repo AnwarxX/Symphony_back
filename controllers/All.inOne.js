@@ -7,8 +7,6 @@ let mssql = require('../configuration/mssql-pool-management.js')
 const config = require('../configuration/config')//call for using configuration module that we create it to store database conaction
 var CryptoJS = require("crypto-js");
 var fs = require('fs');
-
-
 module.exports.uploadLicense = async (req, res) => {
     try {
         //used to establish connection between database and the middleware

@@ -99,7 +99,6 @@ async function capsSched() {
                 }
             })
     }
-    console.log(monthDays);
 }
 async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,token) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -185,13 +184,8 @@ async function capsTotal(capsName,query,capsConfig) {
                         check+=Object.keys(rows)[j]+"=0 and "
                         data += "0,"
                     }
-                    else if (typeof (rows[Object.keys(rows)[j]]) == "number") {
-                        check+=Object.keys(rows)[j]+"="+rows[Object.keys(rows)[j]] +" and "
-                        data += rows[Object.keys(rows)[j]] + ","
-                    }
                     else{
                         check+=Object.keys(rows)[j]+"="+"'"+rows[Object.keys(rows)[j]].toString().split("'").join("")+"'"+" and "
-                        // console.log(rows[Object.keys(rows)[j]],typeof(rows[Object.keys(rows)[j]]));
                         data += "'" + rows[Object.keys(rows)[j]].toString().split("'").join("") + "'" + ","
                     }
                 }
@@ -209,6 +203,7 @@ async function capsTotal(capsName,query,capsConfig) {
             }
         console.log(capsName,"Done");
     } catch (error) {
+        console.log(capsName);
         console.log("\x1b[31m",error);
     }
 }
@@ -325,6 +320,83 @@ module.exports.update = async (req, res) => {
             Where capsCode='${req.body.capsCode}'`);
             res.json(req.body)//viewing the data which is array of obecjts which is json 
         } catch (error) {
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+}
+module.exports.import = async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            let capsCodes=await request.query(`SELECT * From capsConfig where capsCode=${req.body.interface}`)
+            if (req.body.api=='getGuestChecks') {
+                await capsTotal(req.body.api,queries(req.body.date)[req.body.api],{
+                    user: capsCodes.recordset[0].user,
+                    password: capsCodes.recordset[0].password,
+                    server: capsCodes.recordset[0].server,
+                    database: capsCodes.recordset[0].database,
+                    "options": {
+                      "abortTransactionOnError": true,
+                      "encrypt": false,
+                      "enableArithAbort": true,
+                      trustServerCertificate: true
+                    },
+                    charset: 'utf8'
+                  })
+                await capsTotal('GuestChecksLineDetails',queries(req.body.date)['GuestChecksLineDetails'],{
+                      user: capsCodes.recordset[0].user,
+                      password: capsCodes.recordset[0].password,
+                      server: capsCodes.recordset[0].server,
+                      database: capsCodes.recordset[0].database,
+                      "options": {
+                        "abortTransactionOnError": true,
+                        "encrypt": false,
+                        "enableArithAbort": true,
+                        trustServerCertificate: true
+                      },
+                      charset: 'utf8'
+                    })
+            }
+            else if (req.body.api=='all') {
+                for (let i = 0; i < Object.keys(queries(req.body.date)).length; i++) {
+                    await capsTotal(Object.keys(queries(req.body.date))[i],queries(req.body.date)[Object.keys(queries(req.body.date))[i]],{
+                        user: capsCodes.recordset[0].user,
+                        password: capsCodes.recordset[0].password,
+                        server: capsCodes.recordset[0].server,
+                        database: capsCodes.recordset[0].database,
+                        "options": {
+                          "abortTransactionOnError": true,
+                          "encrypt": false,
+                          "enableArithAbort": true,
+                          trustServerCertificate: true
+                        },
+                        charset: 'utf8'
+                      })
+                }
+            }
+            else{
+                await capsTotal(req.body.api,queries(req.body.date)[req.body.api],{
+                    user: capsCodes.recordset[0].user,
+                    password: capsCodes.recordset[0].password,
+                    server: capsCodes.recordset[0].server,
+                    database: capsCodes.recordset[0].database,
+                    "options": {
+                      "abortTransactionOnError": true,
+                      "encrypt": false,
+                      "enableArithAbort": true,
+                      trustServerCertificate: true
+                    },
+                    charset: 'utf8'
+                  })
+            }
+              res.json('submitted successfully')
+        } catch (error) {
+            console.log("\x1b[31m",error.message);
             res.json(error.message)
         }
     else{

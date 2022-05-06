@@ -17,6 +17,7 @@ const allInOne =require('../controllers/All.inOne')
 const validation =require('../controllers/validation.controller')
 const req = require('express/lib/request');
 appRoutes.post("/import", apiController.import)
+appRoutes.post("/capsImport", capsController.import)
 appRoutes.get("/loc",async(req,res)=>{
   //the data from the API
   const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemPrices', {

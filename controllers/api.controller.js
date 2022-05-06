@@ -32,8 +32,6 @@ oAuth2Client.setCredentials({refresh_token})
 var status=[];
 let scJop={}
 let monthDays={}
-let x=CryptoJS.AES.encrypt(`[{"product":"Symphony","LockRef":"CHGOUNA","EnterpriseShortName":"Vaquero Company","EndDate":"2022-05-30T14:07"}]`, 'lamiaa')
-console.log(x.toString());
 async function sendMail(interfaceCode,apiName,dat) {
     try{
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -716,7 +714,6 @@ async function sched() {
                 }
             })
     }
-    console.log(scJop);
 }
 async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -829,7 +826,7 @@ module.exports.interfaceCode = async (req, res) => {
         //used to establish connection between database and the middleware
         const interfacedata = await request.query(`SELECT interfaceCode From  interfaceDefinition `)
           //used to establish connection between database and the middleware
-          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License'`)
+          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`)
         res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
     } catch (error) {
         res.json(error.message)
@@ -1385,7 +1382,7 @@ module.exports.deleteInterface = async (req, res) => {
             let request = new sql.Request(sqlPool)
             //used to establish connection between database and the middleware
             //query to delete PropertySettings data from Mapping table  in  database 
-            const values = await request.query(`delete from PropertySettings where BU='${req.body.BU}' and interfaceCode='${req.body.interfaceCode}' and MappingCode='${req.body.MappingCode}'`);
+            const values = await request.query(`delete from interfaceConnections where interfaceCode='${req.body.interfaceCode}'`);
             res.json("deleted successfully")//viewing the data which is array of obecjts which is json 
         } catch (error) {
             res.json(error.message)
@@ -1456,7 +1453,7 @@ module.exports.stop = async (req, res) => {
         //     }
         // }
         console.log(req.body.interfaceCode);
-        scJop[req.body.interfaceCode].cancel()
+        scJop[req.body.interfaceCode+'api'].cancel()
         res.json("Schedule has stopped")
     } catch (error) {
         res.json(error.message)
@@ -1476,7 +1473,7 @@ module.exports.start = async (req, res) => {
         //         x=i
         //     }
         // }
-        scJop[req.body.interfaceCode].reschedule(apiSch.recordset[0].ApiSchedule)
+        scJop[req.body.interfaceCode+'api'].reschedule(apiSch.recordset[0].ApiSchedule)
         res.json("Schedule has started")
     } catch (error) {
         res.json(error.message)

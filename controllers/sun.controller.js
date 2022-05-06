@@ -85,7 +85,6 @@ async function schedSun() {
     interfaceSunCodes=interfaceSunCodes.recordset
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
-        console.log("sunSch",interfaceSunCodes[i].sunCode);
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
@@ -112,7 +111,6 @@ async function schedSun() {
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
             monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=[dat]
         }
-        console.log("monthSunDays",sunSch.recordset[0].SunSchedule);
         sunJop[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
                 for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type].length; j++) {
@@ -171,13 +169,12 @@ module.exports.stop = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let interfaceCodes=await request.query(`SELECT * From interfaceConnections where BUCode='${req.body.BU}'`)
+        let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
-        console.log(interfaceCodes[0].interfaceCode+req.body.BU+interfaceCodes[0].type);
-        console.log(sunJop);
-        sunJop[interfaceCodes[0].interfaceCode+req.body.BU+interfaceCodes[0].type].cancel()
+        sunJop[interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type].cancel()
         res.json("Sun Schedule has stopped")
     } catch (error) {
+        console.log(error);
         res.json(error.message)
     }
 }
@@ -185,12 +182,15 @@ module.exports.start = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let interfaceCodes=await request.query(`SELECT * From interfaceConnections where BU='${req.body.BU}'`)
+        let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
-        let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where sucCode= '${interfaceCodes[0].sunCoe}'`)
-        sunJop[interfaceCodes[0].interfaceCode+req.body.BU+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
+        console.log(interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type);
+        let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where sunCode= '${interfaceCodes[0].sunCode}'`)
+        console.log(sunSch.recordset[0].SunSchedule);
+        sunJop[interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
         res.json("Schedule has started")
     }catch (error){
+        console.log(error);
         res.json(error.message)
     }
 }
@@ -607,7 +607,8 @@ async function SUN(interfaceCode, dat,res, req) {
         }
     } catch (error) {
        console.log("\x1b[31m",error.message);
-       let connectionCode=await request.query(`SELECT interfaceCode,type From  interfaceConnections where connectionCode=${interfaceCod} `)
+       let connectionCode=await request.query(`SELECT interfaceCode,type From  interfaceConnections where connectionCode=${interfaceCod}`)
+       console.log(connectionCode,interfaceCod);
         sendMail(connectionCode.recordset[0].interfaceCode,connectionCode.recordset[0].type,'Sun',dat)
         .then((result)=> console.log('email sent',result))
         .catch((error)=> console.log(error.message));
