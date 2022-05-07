@@ -184,9 +184,7 @@ module.exports.start = async (req, res) => {
         let request = new sql.Request(sqlPool)
         let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
-        console.log(interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type);
         let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where sunCode= '${interfaceCodes[0].sunCode}'`)
-        console.log(sunSch.recordset[0].SunSchedule);
         sunJop[interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
         res.json("Schedule has started")
     }catch (error){
@@ -788,6 +786,24 @@ module.exports.codes = async (req, res) => {
         const interfaseCode = await request.query(`SELECT interfaceCode From interfaceDefinition EXCEPT SELECT interfaceCode From sundefinition where definitionType='api'`);
        res.json({interface:interfaseCode.recordset})
     } catch (error) {
+        res.json(error.message)
+    }
+}
+module.exports.importInterface = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
+        for (let i = 0; i < interfaseCode.recordset.length; i++) {
+            if (sunJop[interfaseCode.recordset[i].interfaceCode+interfaseCode.recordset[i].BUCode+interfaseCode.recordset[i].type].nextInvocation() == null) {
+                interfaseCode.recordset[i]['scheduleStatus']=false
+            }
+            else
+                interfaseCode.recordset[i]['scheduleStatus']=true
+        }
+        
+       res.json(interfaseCode.recordset)
+    } catch (error){
         res.json(error.message)
     }
 }

@@ -1406,16 +1406,6 @@ module.exports.reviewInterface = async (req, res) => {
     else
         res.json(errors)
 }
-module.exports.importInterface = async (req, res) => {
-    try {
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
-       res.json(interfaseCode.recordset)
-    } catch (error){
-        res.json(error.message)
-    }
-}
 module.exports.SysData = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -1452,7 +1442,6 @@ module.exports.stop = async (req, res) => {
         //         x=i
         //     }
         // }
-        console.log(req.body.interfaceCode);
         scJop[req.body.interfaceCode+'api'].cancel()
         res.json("Schedule has stopped")
     } catch (error) {

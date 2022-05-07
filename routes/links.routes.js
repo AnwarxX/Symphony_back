@@ -45,7 +45,7 @@ appRoutes.get("/sunCon", async (req, res) => {
 })
 appRoutes.post('/delete',validation.delete, apiController.delete);//
 appRoutes.post('/deleteInterface',validation.deleteInterface, apiController.deleteInterface);//
-appRoutes.get("/importInterface", apiController.importInterface)
+appRoutes.get("/importInterface", sunController.importInterface)
 //this endpoint used to retrive all the tables name and their columns
 appRoutes.get('/SysData', apiController.SysData);
 appRoutes.post("/stop", apiController.stop)
