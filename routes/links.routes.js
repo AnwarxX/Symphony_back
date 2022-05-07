@@ -66,7 +66,7 @@ appRoutes.post('/reviewInterface',validation.reviewInterface, apiController.revi
 appRoutes.post('/update',validation.update, apiController.update);//
 appRoutes.post('/uploadLicense',allInOne.uploadLicense);//
 appRoutes.get('/getURL',apiController.getURL);
-appRoutes.get('/statusData', apiController.statusData);
+appRoutes.post('/statusData', apiController.statusData);
 appRoutes.get('/getLisence', allInOne.getLisence);
 //this endpoint used for Caps in database 
 appRoutes.get('/capsConigration', capsController.capsConigration);
@@ -75,6 +75,7 @@ appRoutes.get('/getCAPS', capsController.getCAPS);
 appRoutes.get("/capsCodes", capsController.codes)
 appRoutes.post("/deleteCaps", capsController.Delete)
 appRoutes.post("/updateCaps", capsController.update);
+appRoutes.get("/getInterfaceDeinitionEdit", allInOne.getInterfaceDeinitionEdit);
 appRoutes.get("/getInterfaceDeinition", allInOne.getInterfaceDeinition);
 appRoutes.post("/setInterfaceDeinition", sunController.setInterfaceDeinition);
 

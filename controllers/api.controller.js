@@ -1174,186 +1174,195 @@ module.exports.sunAuthorization = async (req, res) => {
         res.json(errors)
     }
 }
-module.exports.update = async (req, res) => {
-   console.log(req.body);
-    //job.reschedule(req.body.ApiSchedule);
-    let resp;
-    let clientId=req.body.clientId
-    let username=req.body.username
-    let password=req.body.password
-    let orgname=req.body.enterpriseShortName
-    let SunUser = req.body.SunUser
-    let SunPassword = req.body.SunPassword
-    let Sunserver = req.body.Sunserver
-    let SunDatabase = req.body.SunDatabase
-    const errors = validationResult(req);
-    var hashApi =  CryptoJS.AES.encrypt(password, 'hashApi').toString()
-    var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
-    if (errors.isEmpty())
-        try {
-            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-            let request = new sql.Request(sqlPool)
-            resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
-                username, //gave the values directly for testing
-                password,
-                orgname
-            }), {
-                headers: {
-                    // 'application/json' is the modern content-type for JSON, but some
-                    // older servers may use 'text/json'.
-                    // See: http://bit.ly/text-json
-                    'content-type': 'application/x-www-form-urlencoded',
-                    'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
-                }
-            , withCredentials: true });
-            let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
-            let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
-                scope: "openid", //gave the values directly for testing
-                grant_type: "authorization_code",
-                client_id: clientId,
-                code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
-                code: redirectUrlCode,
-                redirect_url: "apiaccount://callback"
-            }), {
-                headers: {
-                    // 'application/json' is the modern content-type for JSON, but some
-                    // older servers may use 'text/json'.
-                    // See: http://bit.ly/text-json
-                    'content-type': 'application/x-www-form-urlencoded'
-                }
-            , withCredentials: true });
-            const dbConfig = {
-                user: SunUser,
-                password: SunPassword,
-                server: Sunserver,
-                database: SunDatabase,
-                "options": {
-                "abortTransactionOnError": true,
-                "encrypt": false,
-                "enableArithAbort": true,
-                trustServerCertificate: true
-                },
-                charset: 'utf8'
-            };
+// module.exports.update = async (req, res) => {
+//    console.log(req.body);
+//     //job.reschedule(req.body.ApiSchedule);
+//     let resp;
+//     let clientId=req.body.clientId
+//     let username=req.body.username
+//     let password=req.body.password
+//     let orgname=req.body.enterpriseShortName
+//     let SunUser = req.body.SunUser
+//     let SunPassword = req.body.SunPassword
+//     let Sunserver = req.body.Sunserver
+//     let SunDatabase = req.body.SunDatabase
+//     const errors = validationResult(req);
+//     var hashApi =  CryptoJS.AES.encrypt(password, 'hashApi').toString()
+//     var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
+//     if (errors.isEmpty())
+//         try {
+//             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+//             let request = new sql.Request(sqlPool)
+//             resp = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/signin',qs.stringify({
+//                 username, //gave the values directly for testing
+//                 password,
+//                 orgname
+//             }), {
+//                 headers: {
+//                     // 'application/json' is the modern content-type for JSON, but some
+//                     // older servers may use 'text/json'.
+//                     // See: http://bit.ly/text-json
+//                     'content-type': 'application/x-www-form-urlencoded',
+//                     'Cookie': `client_id=${clientId};code_challenge=FlyjQEyPz6tRl-UKGjXCiumY4O6_bqHPkTGAtgTSOOg;code_challenge_method=S256;redirect_uri=apiaccount://callback;response_type=code;state=;`
+//                 }
+//             , withCredentials: true });
+//             let redirectUrlCode=resp.data.redirectUrl.split('code')[1].substring(1)
+//             let resp2 = await axios.post('https://mte4-ohra-idm.oracleindustry.com/oidc-provider/v1/oauth2/token',qs.stringify({
+//                 scope: "openid", //gave the values directly for testing
+//                 grant_type: "authorization_code",
+//                 client_id: clientId,
+//                 code_verifier: "UnIKXBl2u6Mj6B5Un45j07diPyIaBHjcWXt4DUfXc6U",
+//                 code: redirectUrlCode,
+//                 redirect_url: "apiaccount://callback"
+//             }), {
+//                 headers: {
+//                     // 'application/json' is the modern content-type for JSON, but some
+//                     // older servers may use 'text/json'.
+//                     // See: http://bit.ly/text-json
+//                     'content-type': 'application/x-www-form-urlencoded'
+//                 }
+//             , withCredentials: true });
+//             const dbConfig = {
+//                 user: SunUser,
+//                 password: SunPassword,
+//                 server: Sunserver,
+//                 database: SunDatabase,
+//                 "options": {
+//                 "abortTransactionOnError": true,
+//                 "encrypt": false,
+//                 "enableArithAbort": true,
+//                 trustServerCertificate: true
+//                 },
+//                 charset: 'utf8'
+//             };
             
-            //console.log(request.connect(dbConfig),"kkk");
+//             //console.log(request.connect(dbConfig),"kkk");
 
-            token=resp2.data.id_token
-            let runtime;
-            //console.log(token);
-            let myDate=new Date(req.body.SunSchedule)
-            switch (req.body.SunScheduleStatue) {
-                case "day": {//every hour
+//             token=resp2.data.id_token
+//             let runtime;
+//             //console.log(token);
+//             let myDate=new Date(req.body.SunSchedule)
+//             switch (req.body.SunScheduleStatue) {
+//                 case "day": {//every hour
         
-                let hour = req.body.SunSchedule.split(":")[0];
-                let min = req.body.SunSchedule.split(":")[1];
-                console.log("hour",hour);
-                console.log("min",min);
-                runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
-                console.log(runtime);
-                break;
-                }
-                case "year": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-                console.log(runtime);
+//                 let hour = req.body.SunSchedule.split(":")[0];
+//                 let min = req.body.SunSchedule.split(":")[1];
+//                 console.log("hour",hour);
+//                 console.log("min",min);
+//                 runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+//                 console.log(runtime);
+//                 break;
+//                 }
+//                 case "year": {
+//                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+//                 console.log(runtime);
         
-                break;
-                }
-                case "month": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
-                console.log(runtime);
+//                 break;
+//                 }
+//                 case "month": {
+//                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+//                 console.log(runtime);
 
-                break;
-                }
-                default:
-                break;
-            }
-            req.body.SunSchedule=runtime
-            myDate=new Date(req.body.ApiSchedule)
-            switch (req.body.ApiScheduleStatue) {
-                case "apiday": {//every hour
-                let hour = req.body.ApiSchedule.split(":")[0];
-                let min = req.body.ApiSchedule.split(":")[1];
-                runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
-                console.log(runtime);
-                break;
-                }
-                case "apiyear": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
-                console.log(runtime);
+//                 break;
+//                 }
+//                 default:
+//                 break;
+//             }
+//             req.body.SunSchedule=runtime
+//             myDate=new Date(req.body.ApiSchedule)
+//             switch (req.body.ApiScheduleStatue) {
+//                 case "apiday": {//every hour
+//                 let hour = req.body.ApiSchedule.split(":")[0];
+//                 let min = req.body.ApiSchedule.split(":")[1];
+//                 runtime = `0 ${(min[0] == "0") ? min[1] :min} ${(hour[0] == "0") ? hour[1] :hour} * * *`
+//                 console.log(runtime);
+//                 break;
+//                 }
+//                 case "apiyear": {
+//                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+//                 console.log(runtime);
             
-                break;
-                }
-                case "apimonth": {
-                runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
-                console.log(runtime);
-                break;
-                }
-                default:
-                break;
-            }
-            req.body.ApiSchedule=runtime
-            let  refresh_token =resp2.data.refresh_token
-            let columns = ""
-            let data = ""
-            let check=""
-            for (let j = 0; j < Object.keys(req.body).length; j++) {
-                console.log(req.body[Object.keys(req.body)[j]],"sss");
-                if(Object.keys(req.body)[j] == "password" ){
-                    req.body[Object.keys(req.body)[j]]= hashApi
-                }
-                else if(Object.keys(req.body)[j] == "SunPassword" ){
-                    req.body[Object.keys(req.body)[j]]= hashSun
-                }
-                columns += Object.keys(req.body)[j] + ','
-                // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
-                if ((req.body[Object.keys(req.body)[j]] == null)) {
-                    check+=Object.keys(req.body)[j]+"=0 , "
-                    data += "0,"
-                }
-                else if (typeof (req.body[Object.keys(req.body)[j]]) == "number" && Object.keys(req.body)[j]!='interfaceCode') {
-                    check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" , "
-                    data += req.body[Object.keys(req.body)[j]] + ","
+//                 break;
+//                 }
+//                 case "apimonth": {
+//                 runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate() } * *`;
+//                 console.log(runtime);
+//                 break;
+//                 }
+//                 default:
+//                 break;
+//             }
+//             req.body.ApiSchedule=runtime
+//             let  refresh_token =resp2.data.refresh_token
+//             let columns = ""
+//             let data = ""
+//             let check=""
+//             for (let j = 0; j < Object.keys(req.body).length; j++) {
+//                 console.log(req.body[Object.keys(req.body)[j]],"sss");
+//                 if(Object.keys(req.body)[j] == "password" ){
+//                     req.body[Object.keys(req.body)[j]]= hashApi
+//                 }
+//                 else if(Object.keys(req.body)[j] == "SunPassword" ){
+//                     req.body[Object.keys(req.body)[j]]= hashSun
+//                 }
+//                 columns += Object.keys(req.body)[j] + ','
+//                 // data+=oneForAll[i][Object.keys(oneForAll[i])[j]]+','
+//                 if ((req.body[Object.keys(req.body)[j]] == null)) {
+//                     check+=Object.keys(req.body)[j]+"=0 , "
+//                     data += "0,"
+//                 }
+//                 else if (typeof (req.body[Object.keys(req.body)[j]]) == "number" && Object.keys(req.body)[j]!='interfaceCode') {
+//                     check+=Object.keys(req.body)[j]+"="+req.body[Object.keys(req.body)[j]] +" , "
+//                     data += req.body[Object.keys(req.body)[j]] + ","
 
-                }
-                else{
-                    if (Object.keys(req.body)[j]!='interfaceCode') {
-                        check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" , "
-                    }
-                    data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
+//                 }
+//                 else{
+//                     if (Object.keys(req.body)[j]!='interfaceCode') {
+//                         check+=Object.keys(req.body)[j]+"="+"'"+req.body[Object.keys(req.body)[j]]+"'"+" , "
+//                     }
+//                     data += "'" + req.body[Object.keys(req.body)[j]] + "'" + ","
 
-                }
-            }
+//                 }
+//             }
            
-            // console.log(columns);
-            // console.log(data);
-            // console.log(check,ss);
-           // console.log(check,hash);
+//             // console.log(columns);
+//             // console.log(data);
+//             // console.log(check,ss);
+//            // console.log(check,hash);
 
-            console.log(
-                `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
-                where interfaceCode=${req.body.interfaceCode}`);
-            const addCase = await request.query(
-                `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
-                where interfaceCode=${req.body.interfaceCode}`);
+//             console.log(
+//                 `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
+//                 where interfaceCode=${req.body.interfaceCode}`);
+//             const addCase = await request.query(
+//                 `update  interfaceDefinition set ${check} token='${token}',refreshToken='${refresh_token}'
+//                 where interfaceCode=${req.body.interfaceCode}`);
 
-            scJop[req.body.interfaceCode].reschedule(req.body.ApiSchedule)
-            //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
-            res.json("Submitted successfully");
-        } catch (error) {
-            let x=[]
-            console.log(error);
-            if(error.message.includes(400))
-                x.push("Invalid Client ID")
-            if(error.message.includes(401)){
-                x.push("Invalid username ,password or enterprise name")
-            }
-        else
-                x.push(error)
-            res.json(x)
-        }
-    else
-        res.json(errors)
+//             scJop[req.body.interfaceCode].reschedule(req.body.ApiSchedule)
+//             //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
+//             res.json("Submitted successfully");
+//         } catch (error) {
+//             let x=[]
+//             console.log(error);
+//             if(error.message.includes(400))
+//                 x.push("Invalid Client ID")
+//             if(error.message.includes(401)){
+//                 x.push("Invalid username ,password or enterprise name")
+//             }
+//         else
+//                 x.push(error)
+//             res.json(x)
+//         }
+//     else
+//         res.json(errors)
+// }
+module.exports.update = async (req, res) => {
+    console.log(`UPDATE [dbo].[interfaceConnections]
+                SET [type] = ${req.body.type}
+                ,[interfaceCode] = ${req.body.interfaceCode}
+                ,[sunCode] = ${req.body.sunCode}
+                ,[mappCode] = ${req.body.mappCode}
+                ,[BUCode] = ${req.body.BUCode}
+                WHERE coonnectionCode=${req.body.coonnectionCode}`);
 }
 module.exports.delete = async (req, res) => {
     const errors = validationResult(req);
@@ -1640,9 +1649,18 @@ module.exports.statusData = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let data =await request.query(`select * from ImportStatus`)
-        res.json(data.recordset)
+        let data;
+        console.log(req.body);
+        if (req.body.date=="") {
+            data =await request.query(`select * from ImportStatus order by Date desc`)
+        }
+        else{
+            data =await request.query(`select * from ImportStatus where Date='${req.body.date}' order by Date desc`)
+        }
+        data=data.recordset
+        res.json(data)
     } catch (error) {
+        console.log(error);
         res.json(error.message)
     }
 }

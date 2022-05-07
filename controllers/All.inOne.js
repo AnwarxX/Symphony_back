@@ -89,3 +89,20 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         res.json(error.message)
     }
 }
+module.exports.getInterfaceDeinitionEdit = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let suncodes = await (await request.query(`select SunCode from sundefinition`)).recordset
+        let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
+        let apicodes = await (await request.query(`select interfaceCode from interfaceDefinition`)).recordset
+        let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
+        let capscodes = await (await request.query(`select capsCode from capsConfig`)).recordset
+        console.log("safiashjfioasj");
+        res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
+    }
+    catch (error) {
+        console.log(error);
+        res.json(error.message)
+    }
+}
