@@ -83,12 +83,13 @@ async function schedSun() {
     let request = new sql.Request(sqlPool)
     let interfaceSunCodes=await request.query("SELECT * From interfaceConnections")
     interfaceSunCodes=interfaceSunCodes.recordset
+    console.log("sajfoisafjoiasjf");
     for (let i = 0; i < interfaceSunCodes.length; i++) {
         let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
         let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
         // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
         if(sunSch.recordset[0].SunScheduleStatue=="month"){
-            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=getDaysArray(
+            monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=getDaysArray(
                 new Date(new Date(new Date().getFullYear() + "-" +  
                 (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                 ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
@@ -109,19 +110,19 @@ async function schedSun() {
             let dt = new Date();
             dt.setHours(dt.getHours() + 2);
             let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=[dat]
+            monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=[dat]
         }
-        sunJop[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type]=
+        sunJop[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=
             schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
-                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type].length; j++) {
+                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type].length; j++) {
                    // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
-                    await SUN(interfaceSunCodes[i].interfaceCode,monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BUCode+interfaceSunCodes[i].type][j])
+                    await SUN(interfaceSunCodes[i].connectionCode,monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type][j])
                 }
             })
         
     }
 }
-async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU,type) {
+async function schedSunPush(sunSchedule,SunScheduleStatue ,connectionCode,type) {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     // let request = new sql.Request(sqlPool)
     // let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
@@ -132,11 +133,11 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU,typ
     //     // apiSch.recordset[0].sunSchedule='* * * * * *'
     //     console.log("api",interfaceCodes[i].SunScheduleStatue,interfaceCodes[i].sunSchedule);
     //     console.log(monthSunDays);
-    sunJop[interfaceCode+BU+type]=
+    sunJop[connectionCode+type]=
         schedule.scheduleJob(sunSchedule, async function () {
             let sunDate=sunSchedule.split(" ")
             if(SunScheduleStatue=="month"){
-                monthSunDays[interfaceCode+BU+type]=getDaysArray(
+                monthSunDays[connectionCode+type]=getDaysArray(
                     new Date(new Date(new Date().getFullYear() + "-" +  
                     (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                     ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
@@ -157,10 +158,10 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,interfaceCode, BU,typ
                 let dt = new Date();
                 dt.setHours(dt.getHours() + 2);
                 let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-                monthSunDays[interfaceCode+BU+type]=[dat]
+                monthSunDays[connectionCode+type]=[dat]
             }
-            for (let j = 0; j < monthSunDays[interfaceCode+BU+type].length; j++) {
-                SUN(interfaceCode, monthSunDays[interfaceCode+BU+type][j])
+            for (let j = 0; j < monthSunDays[connectionCode+type].length; j++) {
+                SUN(interfaceCode, monthSunDays[connectionCode+type][j])
             }
         })
     // }
@@ -171,7 +172,7 @@ module.exports.stop = async (req, res) => {
         let request = new sql.Request(sqlPool)
         let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
-        sunJop[interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type].cancel()
+        sunJop[req.body.connectionCode+interfaceCodes[0].type].cancel()
         res.json("Sun Schedule has stopped")
     } catch (error) {
         console.log(error);
@@ -185,7 +186,7 @@ module.exports.start = async (req, res) => {
         let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
         let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where sunCode= '${interfaceCodes[0].sunCode}'`)
-        sunJop[interfaceCodes[0].interfaceCode+interfaceCodes[0].BUCode+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
+        sunJop[req.body.connectionCode+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
         res.json("Schedule has started")
     }catch (error){
         console.log(error);
@@ -214,6 +215,7 @@ async function SUN(interfaceCode, dat,res, req) {
     let request = new sql.Request(sqlPool)
     try {
         let connectionCode=await request.query(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `)
+        console.log(connectionCode.recordset[0],interfaceCod);
         const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sunDefinition where sunCode=${connectionCode.recordset[0].sunCode} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where BU='${connectionCode.recordset[0].BUCode}'`)
         let pass =sunCon.recordset[0].SunPassword
@@ -599,12 +601,13 @@ async function SUN(interfaceCode, dat,res, req) {
                 VALUES ('Sun','${dat}','Successfully')
                 END`)
         //await request.query(``)
+        console.log('fnlksam sakm kmask mkmsa');
         if (res != undefined) {
 
             res.json("successfully")
         }
     } catch (error) {
-       console.log("\x1b[31m",error.message);
+       console.log("\x1b[31m",error);
        let connectionCode=await request.query(`SELECT interfaceCode,type From  interfaceConnections where connectionCode=${interfaceCod}`)
        console.log(connectionCode,interfaceCod);
         sendMail(connectionCode.recordset[0].interfaceCode,connectionCode.recordset[0].type,'Sun',dat)
@@ -658,8 +661,9 @@ module.exports.setInterfaceDeinition = async (req, res) => {
         end
         end`)
         const sunCon = await request.query(`SELECT * From  sunDefinition where sunCode='${req.body.sunCode}' `);
+        const connectionCode=await request.query(`SELECT max(connectionCode) From  interfaceConnections `);
         if(setInterfaceDeinition.recordset==undefined){
-            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,req.body.interfaceCode ,req.body.BUCode,req.body.type)
+            schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,connectionCode.recordset[0][""],req.body.type)
             console.log(sunJop);
             res.json('Submitted successfully')
         }
@@ -795,7 +799,7 @@ module.exports.importInterface = async (req, res) => {
         let request = new sql.Request(sqlPool)
         const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
         for (let i = 0; i < interfaseCode.recordset.length; i++) {
-            if (sunJop[interfaseCode.recordset[i].interfaceCode+interfaseCode.recordset[i].BUCode+interfaseCode.recordset[i].type].nextInvocation() == null) {
+            if (sunJop[interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type].nextInvocation() == null) {
                 interfaseCode.recordset[i]['scheduleStatus']=false
             }
             else
@@ -804,7 +808,19 @@ module.exports.importInterface = async (req, res) => {
         
        res.json(interfaseCode.recordset)
     } catch (error){
+        console.log(error);
         res.json(error.message)
     }
 }
-
+module.exports.update = async (req, res) => {
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    await request.query(`UPDATE [dbo].[interfaceConnections]
+                SET [type] = '${req.body.type}'
+                ,[interfaceCode] = ${req.body.interfaceCode}
+                ,[sunCode] = ${req.body.sunCode}
+                ,[mappCode] = '${req.body.mappCode}'
+                ,[BUCode] = '${req.body.BUCode}'
+                WHERE connectionCode=${req.body.connectionCode}`);
+    res.json('Updated successfully')
+}

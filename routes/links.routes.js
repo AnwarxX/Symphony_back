@@ -63,7 +63,7 @@ appRoutes.post('/mapping',validation.mapping, apiController.postMapping);//
 //this endpoint used to send  Property data(BU,JournalType,Revenue,level,Currencycode) from frontend and insert it in  database 
 appRoutes.post('/PropertySettings',validation.PropertySettings, sunController.PropertySettings);//
 appRoutes.post('/reviewInterface',validation.reviewInterface, apiController.reviewInterface);//
-appRoutes.post('/update',validation.update, apiController.update);//
+appRoutes.post('/update',validation.update, sunController.update);//
 appRoutes.post('/uploadLicense',allInOne.uploadLicense);//
 appRoutes.get('/getURL',apiController.getURL);
 appRoutes.post('/statusData', apiController.statusData);

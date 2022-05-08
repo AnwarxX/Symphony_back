@@ -1355,15 +1355,6 @@ module.exports.sunAuthorization = async (req, res) => {
 //     else
 //         res.json(errors)
 // }
-module.exports.update = async (req, res) => {
-    console.log(`UPDATE [dbo].[interfaceConnections]
-                SET [type] = ${req.body.type}
-                ,[interfaceCode] = ${req.body.interfaceCode}
-                ,[sunCode] = ${req.body.sunCode}
-                ,[mappCode] = ${req.body.mappCode}
-                ,[BUCode] = ${req.body.BUCode}
-                WHERE coonnectionCode=${req.body.coonnectionCode}`);
-}
 module.exports.delete = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
@@ -1422,7 +1413,7 @@ module.exports.SysData = async (req, res) => {
         //used to establish connection between database and the middleware
         let data = []//an empty array used to push all column names with it's table name
         
-        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License'`);//retrive all tables name
+        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'License' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`);//retrive all tables name
         console.log(tables);
         for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
             let x = {}//object that will hold each table name with it's columns
