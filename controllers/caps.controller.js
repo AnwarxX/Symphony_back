@@ -14,6 +14,7 @@ const { test } = require('./api.controller');
 const schedule = require('node-schedule');
 const fs = require('fs')
 let capsScJop={}
+function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
 function queries(date) {
     return{
         getDiscountDailyTotals:`SELECT  max(busDt) as busDt , 
