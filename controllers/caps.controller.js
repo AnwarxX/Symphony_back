@@ -310,16 +310,43 @@ module.exports.update = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
         try {
+            console.log('fdgsfdgwsdfg');
             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
             let request = new sql.Request(sqlPool)
+            let runtime;
+            let myDate=new Date(req.body.capsSchedule)
+            console.log(req.body);
+            switch (req.body.capsScheduleStatus) {
+                case "day": {//every hour
+                    let hour = req.body.capsSchedule.split(":")[0];
+                    let min = req.body.capsSchedule.split(":")[1];
+                    runtime = `0 ${min} ${hour} * * *`
+                    console.log(runtime,"");
+                    break;
+                }
+                case "year": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                    break;
+                }
+                case "month": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+                    console.log(runtime);
+            
+                    break;
+                }
+                default:
+                    break;
+            }
+            console.log(runtime);
+            req.body.capsSchedule=runtime
+
             //used to establish connection between database and the middleware
             //query to delete mapping data from Mapping table  in  database 
-            const values = await request.query(`update  capsConfig set user='${req.body.user}',password='${req.body.password}',server='${req.body.server}',database='${req.body.database}',locRef='${req.body.locRef}',capsSchedule='${req.body.capsSchedule}',capsScheduleStatus='${req.body.capsScheduleStatus}'
-            Where capsCode='${req.body.capsCode}'`);
-            console.log(`update  capsConfig set user='${req.body.user}',password='${req.body.password}',server='${req.body.server}',database='${req.body.database}',locRef='${req.body.locRef}',capsSchedule='${req.body.capsSchedule}',capsScheduleStatus='${req.body.capsScheduleStatus}'
+            const values = await request.query(`update  capsConfig set [user]='${req.body.user}',password='${req.body.password}',server='${req.body.server}',[database]='${req.body.database}',locRef='${req.body.locRef}',capsSchedule='${req.body.capsSchedule}',capsScheduleStatus='${req.body.capsScheduleStatus}'
             Where capsCode='${req.body.capsCode}'`);
             res.json(req.body)//viewing the data which is array of obecjts which is json 
         } catch (error) {
+            console.log(error);
             res.json(error.message)
         }
     else{
