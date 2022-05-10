@@ -384,6 +384,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                     SET Status = 'Successful'
                     WHERE ApiName='${apiName}' and Date='${dat}'
                     end`)
+                    console.log(apiName,"done");
             if (res!=undefined)
                 res.json("Imported successfully")
     }
@@ -770,14 +771,14 @@ module.exports.import = async (req, res) => {
     let request = new sql.Request(sqlPool)
     console.log(req.body);
     // let dates=getDaysArray("2022-02-20","2022-02-23")
-    let interConn=await request.query(`select interfaceCode from interfaceConnections where connectionCode =${req.body.interface}`);
-    let token=await request.query(`select token,lockRef from interfaceDefinition where interfaceCode =${interConn.recordset[0].interface}`);
+    // let interConn=await request.query(`select interfaceCode from interfaceConnections where connectionCode =${req.body.interface}`);
+    let token=await request.query(`select token,lockRef from interfaceDefinition where interfaceCode =${req.body.interface}`);
     // console.log(token.recordset[0].token); 
     // for (let i = 0; i < dates.length; i++) {
         // await guestChecks(req.body.date, 10, 1, token, res);
         if (req.body.api=="getGuestChecks") {
-            guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
-            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface,res)
+            guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface,res)
+            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
         } else{
             if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
                 allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface,res)

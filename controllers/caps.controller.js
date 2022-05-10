@@ -18,13 +18,13 @@ function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(
 function queries(date) {
     return{
         getDiscountDailyTotals:`SELECT  max(busDt) as busDt , 
-        rvcNum  , sum(ttl) as ttl
+        rvcNum  , sum(ttl)*-1 as ttl
         FROM [dbo].[AON_SIMPHONY]
         where   busDt='${date}'
         group by rvcNum
         `,
         getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
-        RevCtrID as rvcNum , sum(TAX) as taxCollTtl 
+        RevCtrID as rvcNum ,'1' as taxNum , sum(TAX) as taxCollTtl 
         FROM CHECKS
         where CAST(CheckOpen as DATE)='${date}'
         group by RevCtrID
@@ -33,7 +33,22 @@ function queries(date) {
         getMenuItemDimensions:`SELECT MajGrpObjNum as majGrpNum, ObjectNumber as num FROM MENU_ITEM_MASTER`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
         GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
-        getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
+        getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name , TendMedType as type  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
+        getTenderMediaDailyTotals:`select '' as 'locRef' , busDt  ,RevCtrId as rvcNum , TendMedID,ObjectNumber as tmedNum , sum(Total) 'ttl' , 0 as Cnt from (
+            select StringTbl.StringText , Tend.TendMedID ,TendMed.ObjectNumber ,sum(Tend.CurrencyAmount) 'Total'  ,  chkDtl.RevCtrId  , 
+            
+            format(Checks.CheckClose,'yyyy-MM-dd') 'busDt'  from TENDER_MEDIA_DETAIL Tend
+            left join CHECK_DETAIL chkDtl on Tend.CheckDetailID = chkDtl.CheckDetailID
+            left join TENDER_MEDIA TendMed on Tend.TendMedID = TendMed.TendMedID
+            
+            left join STRING_TABLE StringTbl on TendMed.NameID = StringTbl.StringNumberID
+            left join CHECKS Checks on Checks.CheckID = chkDtl.CheckID
+            where Tend.CurrencyAmount is not null
+            group by StringTbl.StringText,chkDtl.RevCtrID , Checks.CheckClose,TendMed.ObjectNumber, Tend.TendMedID
+            ) as Data 
+            where busDt='${date}'
+            group by RevCtrID,busDt , TendMedID,ObjectNumber
+            order by busDt`,
         getTaxDimensions:`SELECT TAX.TaxIndex as num,STRING_TABLE.StringText as name FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
     }
 }
@@ -161,6 +176,9 @@ async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,to
     // }
 }
 async function capsTotal(capsName,query,capsConfig) {
+    capsConfig["dialectOptions"]= {
+        "requestTimeout": 300000
+      }
     try {
         let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
         let capsRequest = new sql.Request(capsSqlPool)
@@ -170,6 +188,7 @@ async function capsTotal(capsName,query,capsConfig) {
         let columns = ""
         let data = ""
         let check=""
+        console.log(x.recordset[0]);
         if (x.recordset[0]!=undefined) {
             for (let i = 0; i < x.recordset.length; i++) {
                 columns = ""
@@ -198,11 +217,11 @@ async function capsTotal(capsName,query,capsConfig) {
                     VALUES (${data.slice(0, -1)})
                     END`)
             }
+            console.log(capsName,"Done");
             }
             else{
-                console.log("nothing");
+                console.log("nothing found");
             }
-        console.log(capsName,"Done");
     } catch (error) {
         console.log(capsName);
         console.log("\x1b[31m",error);
@@ -432,4 +451,3 @@ module.exports.import = async (req, res) => {
         res.json(errors)
     }
 }
-// discountDailyTotal('getTaxDailyTotals',queries.getTaxDailyTotals,capsConfig[0])
