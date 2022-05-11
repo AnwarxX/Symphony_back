@@ -193,10 +193,12 @@ module.exports.start = async (req, res) => {
         res.json(error.message)
     }
 }
-async function SUN(interfaceCode, dat,res, req) {
+async function SUN(interfaceCode, dat,type,res, req) {
     let interfaceCod;
     let date;
+    let Types;
     if (req == undefined) {
+        console.log("requndefined");
         // req = {
         //     body: {
         //         interfaceCod: "43",
@@ -208,8 +210,10 @@ async function SUN(interfaceCode, dat,res, req) {
     }
     else {
 
-        interfaceCod = req.body.interfaceCod;
+        //interfaceCod = req.body.interfaceCod;
+        interfaceCod =req.body.connectionCode ;
         date =req.body.date
+        Types =req.body.Types
     }
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
@@ -242,7 +246,6 @@ async function SUN(interfaceCode, dat,res, req) {
     from 
     (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
     left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
-    
     where Main.busDt = '${date}'
     group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
     ) as Main
@@ -634,7 +637,7 @@ module.exports.importSun = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
         try {
-            await SUN(req.body.connectionCode, req.body.date, res, req)
+            await SUN(req.body.connectionCode, req.body.date,req.body.Types, res, req)
         } catch (error) {
             res.json(error.message)
         }

@@ -1057,6 +1057,7 @@ module.exports.sunAuthorization = async (req, res) => {
     let SunPassword = req.body.SunPassword
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
+    let type = req.body.type
     const errors = validationResult(req);
     var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
     if (errors.isEmpty())
