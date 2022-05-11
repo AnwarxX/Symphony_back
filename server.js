@@ -14,7 +14,11 @@ app.use(bodyparser.json())
 //to handle buffer
 app.use(express.urlencoded({extended:true}));
 //call the route that have all functionality
-app.use(require('./routes/links.routes'));
+try {
+    app.use(require('./routes/links.routes'));
+} catch (error) {
+    console.log("hi");
+}
 //define the port that our application will use to work on
 app.listen(process.env.PORT||5000,()=>{
     console.log("server is running");

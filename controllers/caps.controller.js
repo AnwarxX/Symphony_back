@@ -32,7 +32,7 @@ function queries(date) {
         getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
         getMenuItemDimensions:`SELECT MajGrpObjNum as majGrpNum, ObjectNumber as num FROM MENU_ITEM_MASTER`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
-        GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
+        GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[gross],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
         getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name , TendMedType as type  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
         getTenderMediaDailyTotals:`select '' as 'locRef' , busDt  ,RevCtrId as rvcNum , TendMedID,ObjectNumber as tmedNum , sum(Total) 'ttl' , 0 as Cnt from (
             select StringTbl.StringText , Tend.TendMedID ,TendMed.ObjectNumber ,sum(Tend.CurrencyAmount) 'Total'  ,  chkDtl.RevCtrId  , 

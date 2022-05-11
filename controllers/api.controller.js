@@ -1658,45 +1658,11 @@ module.exports.statusData = async (req, res) => {
     }
 }
 module.exports.test = async (req, res) => {
-    //----------------------------stop dynamic schedule----------------------------//
-    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    // let request = new sql.Request(sqlPool)
-    // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
-    // interfaceCodes=interfaceCodes.recordset
-    // let x;
-    // for (let i = 0; i < interfaceCodes.length; i++) {
-    //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-    //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-    //         x=i
-    //     }
-    // }
-    // console.log(x);
-    // scJop[x].cancel()
-    // res.json("tables")
-    //----------------------------stop dynamic schedule----------------------------//
-    //----------------------------start dynamic schedule----------------------------//
-    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    // let request = new sql.Request(sqlPool)
-    // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
-    // let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${req.body.interfaceCode}`)
-    // interfaceCodes=interfaceCodes.recordset
-    // let x;
-    // for (let i = 0; i < interfaceCodes.length; i++) {
-    //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-    //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-    //         x=i
-    //     }
-    // }
-    // apiSch.recordset[0].ApiSchedule="0/3 * * * * *"
-    // scJop[x].reschedule(apiSch.recordset[0].ApiSchedule)
-    // res.json("tables")
-    //----------------------------start dynamic schedule----------------------------//
-    // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    // let request = new sql.Request(sqlPool)
-    // let interfaceCode=await request.query("SELECT token From interfaceDefinition where interfaceCode=97")
-    // token=interfaceCode.recordset[0].token
-    // await jsonTree("2022-03-27", 10, 1, "getGuestChecks", { "locRef": "CHGOUNA","clsdBusDt":"2022-03-27"}, token,"97",res)
-    //  res.json(token)
+    try {
+        asifjiasjf
+    } catch (error) {
+        console.log('bye');
+    }
 }
 let myJson={
     curUTC: "2022-04-17T10:17:53",
