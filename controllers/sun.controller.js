@@ -889,3 +889,80 @@ module.exports.update = async (req, res) => {
                 WHERE connectionCode=${req.body.connectionCode}`);
     res.json('Updated successfully')
 }
+module.exports.getSun = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const capsview = await request.query(`SELECT  * From sundefinition`);
+        res.json(capsview.recordset)
+    } catch (error) {
+        res.json(error.message)
+    }
+}
+
+module.exports.Delete = async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            console.log(req.body);
+            //query to delete sun definition data from sun definition table  in  database 
+            const values = await request.query(`delete from sundefinition Where SunCode='${req.body.SunCode}'`);
+            console.log(`delete from sundefinition Where SunCode='${req.body.SunCode}'`);
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+}
+module.exports.updateSun = async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            console.log('fdgsfdgwsdfg');
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            let runtime;
+            let myDate=new Date(req.body.sunSchedule)
+            console.log(req.body);
+            switch (req.body.sunScheduleStatus) {
+                case "day": {//every hour
+                    let hour = req.body.sunSchedule.split(":")[0];
+                    let min = req.body.sunSchedule.split(":")[1];
+                    runtime = `0 ${min} ${hour} * * *`
+                    console.log(runtime,"");
+                    break;
+                }
+                case "year": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} ${myDate.getMonth() + 1} *`;
+                    break;
+                }
+                case "month": {
+                    runtime = `0 ${myDate.getMinutes()} ${myDate.getHours()} ${myDate.getUTCDate()} * *`;
+                    console.log(runtime);
+            
+                    break;
+                }
+                default:
+                    break;
+            }
+            console.log(runtime);
+            req.body.sunSchedule=runtime
+            //used to establish connection between database and the middleware
+            //query to delete mapping data from Mapping table  in  database 
+            const values = await request.query(`update  sundefinition set SunUser='${req.body.user}',SunPassword='${req.body.password}',Sunserver='${req.body.server}',SunDatabase='${req.body.database}',type='${req.body.type}',SunSchedule='${req.body.sunSchedule}',SunScheduleStatue='${req.body.sunScheduleStatus}'
+            Where SunCode='${req.body.sunCode}'`);
+            res.json(req.body)//viewing the data which is array of obecjts which is json 
+        } catch (error) {
+            console.log(error);
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+}

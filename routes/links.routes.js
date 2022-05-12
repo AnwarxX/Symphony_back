@@ -35,7 +35,9 @@ res.json(resp.data)
 appRoutes.post("/importSun",validation.importSun, sunController.importSun)//donr
 appRoutes.get("/codes", apiController.codes)
 appRoutes.get("/sunCodes", sunController.codes)
-
+appRoutes.get('/getSun', sunController.getSun);
+appRoutes.post("/deleteSun", sunController.Delete)
+appRoutes.post("/updateSun", sunController.updateSun);
 
 appRoutes.get('/interfaceCode', apiController.interfaceCode);
 appRoutes.get("/", apiController.test)//done
