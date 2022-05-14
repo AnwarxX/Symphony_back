@@ -390,7 +390,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
     }
     catch (error) {
         start++;
-        console.log("\x1b[31m",error);
+        console.log("\x1b[31m",error.message);
         if(error.response!=undefined)
             if(error.response.data.detail.includes('expired')){
                 token=refreshToken(token);
@@ -767,47 +767,51 @@ async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,tok
     // }
 }
 module.exports.import = async (req, res) => {
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    console.log(req.body);
-    // let dates=getDaysArray("2022-02-20","2022-02-23")
-    // let interConn=await request.query(`select interfaceCode from interfaceConnections where connectionCode =${req.body.interface}`);
-    let token=await request.query(`select token,lockRef from interfaceDefinition where interfaceCode =${req.body.interface}`);
-    // console.log(token.recordset[0].token); 
-    // for (let i = 0; i < dates.length; i++) {
-        // await guestChecks(req.body.date, 10, 1, token, res);
-        if (req.body.api=="getGuestChecks") {
-            guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface,res)
-            guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
-        } else{
-            if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
-                allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface,res)
-            }
-            else if(req.body.api=="all"){
-                allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
-                guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        console.log(req.body);
+        // let dates=getDaysArray("2022-02-20","2022-02-23")
+        // let interConn=await request.query(`select interfaceCode from interfaceConnections where connectionCode =${req.body.interface}`);
+        let token=await request.query(`select token,lockRef from interfaceDefinition where interfaceCode =${req.body.interface}`);
+        // console.log(token.recordset[0].token); 
+        // for (let i = 0; i < dates.length; i++) {
+            // await guestChecks(req.body.date, 10, 1, token, res);
+            if (req.body.api=="getGuestChecks") {
+                guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface,res)
                 guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
-                allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token,req.body.interface)
-                res.json("done")
+            } else{
+                if( req.body.api=="getTenderMediaDailyTotals" || req.body.api=="getServiceChargeDailyTotals" || req.body.api=="getDiscountDailyTotals" || req.body.api=="getControlDailyTotals" || req.body.api=="getTaxDailyTotals" || req.body.api=="getTaxDailyTotals"){
+                    allForOne(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface,res)
+                }
+                else if(req.body.api=="all"){
+                    allForOne(req.body.date, 10, 1, "getTenderMediaDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                    allForOne(req.body.date, 10, 1, "getServiceChargeDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                    allForOne(req.body.date, 10, 1, "getDiscountDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                    allForOne(req.body.date, 10, 1, "getControlDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                    allForOne(req.body.date, 10, 1, "getTaxDailyTotals", { "locRef": token.recordset[0].lockRef, "busDt": req.body.date }, token.recordset[0].token,req.body.interface)
+                    guestChecksDetails(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+                    guestChecks(req.body.date, 10, 1,{ "locRef": token.recordset[0].lockRef, "clsdBusDt":req.body.date }, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getTenderMediaDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getRevenueCenterDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getMenuItemDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getTaxDimensions", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getMenuItemPrices", { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface)
+                    allForTwo(req.body.date, 10, 1, "getLocationDimensions",{}, token.recordset[0].token,req.body.interface)
+                    res.json("done")
+                }
+                else{
+                    allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface,res)
+    
+                }        
             }
-            else{
-                allForTwo(req.body.date, 10, 1, req.body.api, { "locRef": token.recordset[0].lockRef}, token.recordset[0].token,req.body.interface,res)
-
-            }        
-        }
-    // }
-    // job.reschedule('* * * * * *')
-    // getDaysArray("2022-02-20","2022-02-23")
-  //  guestChecks("2022-02-23", 10, 1,res)
+        // }
+        // job.reschedule('* * * * * *')
+        // getDaysArray("2022-02-20","2022-02-23")
+      //  guestChecks("2022-02-23", 10, 1,res)
+    } catch (error) {
+      res.json(error.message)  
+    }
 }
 module.exports.codes = async (req, res) => {
     try {

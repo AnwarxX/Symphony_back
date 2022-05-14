@@ -175,56 +175,53 @@ async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,to
         })
     // }
 }
-async function capsTotal(capsName,query,capsConfig) {
+async function capsTotal(capsName,query,capsConfig,respo) {
     capsConfig["dialectOptions"]= {
         "requestTimeout": 300000
       }
-    try {
-        let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
-        let capsRequest = new sql.Request(capsSqlPool)
-        let x=await capsRequest.query(query);
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        let columns = ""
-        let data = ""
-        let check=""
-        console.log(x.recordset[0]);
-        if (x.recordset[0]!=undefined) {
-            for (let i = 0; i < x.recordset.length; i++) {
-                columns = ""
-                data = ""
-                check=""
-                let rows=x.recordset[i]
-                for (let j = 0; j < Object.keys(rows).length; j++) {
-                    columns += Object.keys(rows)[j] + ','
-                    if (typeof(rows[Object.keys(rows)[j]])=='object' && rows[Object.keys(rows)[j]]!= null) {
-                        rows[Object.keys(rows)[j]]=rows[Object.keys(rows)[j]].toISOString().split("T")[0]
-                    }
-                    if(rows[Object.keys(rows)[j]] == null) {
-                        check+=Object.keys(rows)[j]+"=0 and "
-                        data += "0,"
-                    }
-                    else{
-                        check+=Object.keys(rows)[j]+"="+"'"+rows[Object.keys(rows)[j]].toString().split("'").join("")+"'"+" and "
-                        data += "'" + rows[Object.keys(rows)[j]].toString().split("'").join("") + "'" + ","
-                    }
+    let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsConfig)
+    let capsRequest = new sql.Request(capsSqlPool)
+    let x=await capsRequest.query(query);
+    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+    let request = new sql.Request(sqlPool)
+    let columns = ""
+    let data = ""
+    let check=""
+    if (x.recordset[0]!=undefined) {
+        for (let i = 0; i < x.recordset.length; i++) {
+            columns = ""
+            data = ""
+            check=""
+            let rows=x.recordset[i]
+            for (let j = 0; j < Object.keys(rows).length; j++) {
+                columns += Object.keys(rows)[j] + ','
+                if (typeof(rows[Object.keys(rows)[j]])=='object' && rows[Object.keys(rows)[j]]!= null) {
+                    rows[Object.keys(rows)[j]]=rows[Object.keys(rows)[j]].toISOString().split("T")[0]
                 }
-                y=await request.query(
-                    `IF NOT EXISTS (SELECT * FROM ${capsName}
-                    WHERE ${check.slice(0, -4)})
-                    BEGIN
-                    INSERT INTO ${capsName} (${columns.slice(0, -1)})
-                    VALUES (${data.slice(0, -1)})
-                    END`)
+                if(rows[Object.keys(rows)[j]] == null) {
+                    check+=Object.keys(rows)[j]+"=0 and "
+                    data += "0,"
+                }
+                else{
+                    check+=Object.keys(rows)[j]+"="+"'"+rows[Object.keys(rows)[j]].toString().split("'").join("")+"'"+" and "
+                    data += "'" + rows[Object.keys(rows)[j]].toString().split("'").join("") + "'" + ","
+                }
             }
-            console.log(capsName,"Done");
-            }
-            else{
-                console.log("nothing found");
-            }
-    } catch (error) {
-        console.log(capsName);
-        console.log("\x1b[31m",error);
+            y=await request.query(
+                `IF NOT EXISTS (SELECT * FROM ${capsName}
+                WHERE ${check.slice(0, -4)})
+                BEGIN
+                INSERT INTO ${capsName} (${columns.slice(0, -1)})
+                VALUES (${data.slice(0, -1)})
+                END`)
+        }
+        console.log(capsName,"Done");
+    }
+    else{
+        console.log("nothing found");
+    }
+    if (respo != undefined) {
+        respo.json('submitted successfully')
     }
 }
 module.exports.capsConigration = async (req, res) => {
@@ -266,10 +263,10 @@ module.exports.addCaps = async (req, res) => {
         begin
         DECLARE @Isdublicate BIT
         IF NOT EXISTS (SELECT * FROM capsConfig
-        WHERE [user]='${req.body.CapsUser}' and password='${req.body.CapsPassword}' and server='${req.body.Capsserver}' and [database]='${req.body.CapsDatabase}' and locRef='${req.body.CapslocRef}' and capsSchedule='${req.body.CapsSchedule}' and capsScheduleStatus='${req.body.CapsScheduleStatue}')
+        WHERE [name]='${req.body.name}' and [user]='${req.body.CapsUser}' and password='${req.body.CapsPassword}' and server='${req.body.Capsserver}' and [database]='${req.body.CapsDatabase}' and locRef='${req.body.CapslocRef}' and capsSchedule='${req.body.CapsSchedule}' and capsScheduleStatus='${req.body.CapsScheduleStatue}')
         BEGIN
-        INSERT INTO capsConfig ([user],password,server,[database],locRef,capsSchedule,capsScheduleStatus)
-        VALUES ('${req.body.CapsUser}','${req.body.CapsPassword}','${req.body.Capsserver}','${req.body.CapsDatabase}','${req.body.CapslocRef}','${req.body.CapsSchedule}','${req.body.CapsScheduleStatue}')
+        INSERT INTO capsConfig (name,[user],password,server,[database],locRef,capsSchedule,capsScheduleStatus)
+        VALUES ('${req.body.name}','${req.body.CapsUser}','${req.body.CapsPassword}','${req.body.Capsserver}','${req.body.CapsDatabase}','${req.body.CapslocRef}','${req.body.CapsSchedule}','${req.body.CapsScheduleStatue}')
         END
         else
         begin
@@ -407,10 +404,27 @@ module.exports.import = async (req, res) => {
                         trustServerCertificate: true
                       },
                       charset: 'utf8'
-                    })
+                    },res)
             }
             else if (req.body.api=='all') {
                 for (let i = 0; i < Object.keys(queries(req.body.date)).length; i++) {
+                    console.log(i);
+                    if (i==Object.keys(queries(req.body.date)).length-1) {
+                        console.log(res);
+                        await capsTotal(Object.keys(queries(req.body.date))[i],queries(req.body.date)[Object.keys(queries(req.body.date))[i]],{
+                            user: capsCodes.recordset[0].user,
+                            password: capsCodes.recordset[0].password,
+                            server: capsCodes.recordset[0].server,
+                            database: capsCodes.recordset[0].database,
+                            "options": {
+                              "abortTransactionOnError": true,
+                              "encrypt": false,
+                              "enableArithAbort": true,
+                              trustServerCertificate: true
+                            },
+                            charset: 'utf8'
+                          },res)
+                    }
                     await capsTotal(Object.keys(queries(req.body.date))[i],queries(req.body.date)[Object.keys(queries(req.body.date))[i]],{
                         user: capsCodes.recordset[0].user,
                         password: capsCodes.recordset[0].password,
@@ -441,9 +455,8 @@ module.exports.import = async (req, res) => {
                     charset: 'utf8'
                   })
             }
-              res.json('submitted successfully')
         } catch (error) {
-            console.log("\x1b[31m",error.message);
+            console.log("\x1b[31m",error);
             res.json(error.message)
         }
     else{
