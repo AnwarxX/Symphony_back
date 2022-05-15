@@ -166,7 +166,6 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
             sendMail(interfaceCode,'getGuestChecks',dat)
             .then((result)=> console.log('email sent',result))
             .catch((error)=> console.log(error.message));
-            if (res==undefined){
                 let status = await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='getGuestChecks' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
@@ -174,8 +173,7 @@ async function guestChecks(dat, limit, start, body, token, interfaceCode, res) {
                     INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                     VALUES ('getGuestChecks','${dat}','Failed','${interfaceCode}')
                     END`)
-            }
-            else{
+            if (res!=undefined){
                 res.json("Failed to Import")
             }
         }
@@ -302,7 +300,8 @@ async function guestChecksDetails(dat, limit, start, body, token, interfaceCode,
                         INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                         VALUES ('guestChecksDetails','${dat}','Failed','${interfaceCode}')
                         END`);
-                // res.json({api:'guestChecksDetails',date:dat,stats:'Faild'})
+            if(res!=undefined)
+                res.json("Failed to Import")
         }
     }
 }
@@ -406,8 +405,6 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
             sendMail(interfaceCode,apiName,dat)
                 .then((result)=> console.log('email sent',result))
                 .catch((error)=> console.log(error.message));
-            if (res==undefined){
-                
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}' and Status='Failed' and interfaceCode='${interfaceCode}')
@@ -415,8 +412,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
                     INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
                     VALUES ('${apiName}','${dat}','Failed','${interfaceCode}')
                     END`);
-            }
-            else
+            if (res!=undefined)
                 res.json("Failed to Import")
         }
     }
@@ -512,7 +508,6 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
             sendMail(interfaceCode,apiName,dat)
             .then((result)=> console.log('email sent',result))
             .catch((error)=> console.log(error.message));
-            if (res==undefined){
                 await request.query(
                     `IF NOT EXISTS (SELECT * FROM ImportStatus
                     WHERE  ApiName='${apiName}' and Date='${dat}')
@@ -520,8 +515,7 @@ async function allForTwo(dat, limit, start, apiName, body, token, interfaceCode,
                     INSERT INTO ImportStatus (ApiName,Date,Status)
                     VALUES ('${apiName}','${dat}','Failed')
                     END`);
-            }
-            else
+            if (res!=undefined)
                 res.json("Failed to Import")
         }
     }
