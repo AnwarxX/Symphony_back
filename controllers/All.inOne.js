@@ -91,15 +91,18 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         res.json(error.message)
     }
 }
-module.exports.getInterfaceDeinitionEdit = async (req, res) => {
+module.exports.getInterfaceDeinition = async (req, res) => {
     try {
+        if (req.body.interfaceCode==undefined) {
+            req.body.interfaceCode=0
+        }
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         let suncodes = await (await request.query(`select SunCode from sundefinition`)).recordset
         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
-        let apicodes = await (await request.query(`select interfaceCode from interfaceDefinition EXCEPT SELECT interfaceCode From interfaceConnections where type ='api' and interfaceCode != ${req.body.interfaceCode}`)).recordset
+        let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset;
         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
-        let capscodes = await (await request.query(`select capsCode from capsConfig`)).recordset
+        let capscodes = await (await request.query(`select capsCode,name from capsConfig where capsCode not in (SELECT interfaceCode From interfaceConnections where type ='caps' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset
         console.log("safiashjfioasj");
         res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
     }
