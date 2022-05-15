@@ -312,6 +312,7 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
     let request = new sql.Request(sqlPool)
     try {
         console.log(apiName,start);
+        console.log(body);
             //request is sent with a body includes location refrence and business date and a header containing the authorization token to retrive
             //the data from the API
             const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/'+apiName, body, {
@@ -390,11 +391,10 @@ async function allForOne(dat, limit, start, apiName, body, token, interfaceCode,
     }
     catch (error) {
         start++;
-        console.log("\x1b[31m",error.message);
+        console.log("\x1b[31m",error.response.data.detail);
         if(error.response!=undefined)
             if(error.response.data.detail.includes('expired')){
-                token=refreshToken(token);
-               
+                // token=refreshToken(token);
             }
         if (start <= limit)
             setTimeout(function () {
@@ -1040,15 +1040,12 @@ module.exports.authorization = async (req, res) => {
             let x=[]
             if(error.message.includes(400))
                 x.push("Invalid Client ID")
-            if(error.message.includes(401)){
+            else if(error.message.includes(401)){
                 x.push("Invalid username ,password or enterprise name")
             }
-            if(error.message.includes('connect'))
-                x.push(error.message)
             else  x.push(error.message)
-
             console.log(error.message);
-            res.json({x})
+            res.json(x)
         }
     else{
         console.log("asfasf",errors);

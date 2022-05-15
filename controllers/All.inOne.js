@@ -76,9 +76,11 @@ module.exports.getLisence = async (req, res) => {
 }
 module.exports.getInterfaceDeinition = async (req, res) => {
     try {
+        console.log("tfytytuy");
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+        console.log(suncodes);
         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api')`)).recordset
         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset

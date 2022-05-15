@@ -17,7 +17,7 @@ app.use(express.urlencoded({extended:true}));
 try {
     app.use(require('./routes/links.routes'));
 } catch (error) {
-    console.log("hi");
+    console.log(error.message);
 }
 //define the port that our application will use to work on
 app.listen(process.env.PORT||5000,()=>{
