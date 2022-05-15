@@ -233,6 +233,22 @@ module.exports.addCaps = async (req, res) => {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
     let runtime;
+    let capsCoing={
+        user: req.body.CapsUser,
+        password: req.body.CapsPassword,
+        server: req.body.Capsserver,
+        database: req.body.CapsDatabase,
+        "options": {
+          "abortTransactionOnError": true,
+          "encrypt": false,
+          "enableArithAbort": true,
+          trustServerCertificate: true
+        },
+        charset: 'utf8'
+      }
+    try {
+    let capsSqlPool = await mssql.GetCreateIfNotExistPool(capsCoing)
+    let capsRequest = new sql.Request(capsSqlPool)
     let myDate=new Date(req.body.CapsSchedule)
     switch (req.body.CapsScheduleStatue) {
         case "day": {//every hour
@@ -282,6 +298,9 @@ module.exports.addCaps = async (req, res) => {
     }
     else
         res.json("Already\texists")
+    } catch (error) {
+        res.json(error.message)
+    }
 }
 module.exports.codes = async (req, res) => {
     try {

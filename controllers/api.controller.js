@@ -1059,11 +1059,26 @@ module.exports.sunAuthorization = async (req, res) => {
     let Sunserver = req.body.Sunserver
     let SunDatabase = req.body.SunDatabase
     let type = req.body.type
+    let sunCoing={
+        user: SunUser,
+        password: SunPassword,
+        server: Sunserver,
+        database: SunDatabase,
+        "options": {
+          "abortTransactionOnError": true,
+          "encrypt": false,
+          "enableArithAbort": true,
+          trustServerCertificate: true
+        },
+        charset: 'utf8'
+      }
     const errors = validationResult(req);
     var hashSun = CryptoJS.AES.encrypt(SunPassword, 'hashSun').toString()
     if (errors.isEmpty())
         try {
             //console.log(hashApi);
+            let sunSqlPool = await mssql.GetCreateIfNotExistPool(sunCoing)
+            let sunRequest = new sql.Request(sunSqlPool)
             let sqlPool = await mssql.GetCreateIfNotExistPool(config)
             let request = new sql.Request(sqlPool)
             let runtime;
@@ -1167,10 +1182,8 @@ module.exports.sunAuthorization = async (req, res) => {
             //await request.query(`insert into interfaceDefinition (apiUserName,apiPassword,email,enterpriseShortName,clientId,lockRef,apiSchedule,sunUser,sunPassword,server,sunDatabase,sunSchedule,token,refreshToken,ApiScheduleStatue,SunScheduleStatue) VALUES ('${req.body.userName}','${req.body.password}','${req.body. email}','${req.body.enterpriseShortName}','${req.body.clientId}','${req.body.lockRef}','${req.body.ApiSchedule}','${req.body.SunUser}','${req.body.SunPassword}','${req.body.Sunserver}','${req.body.SunDatabase}','${req.body.SunSchedule}','${req.body.token}','${req.body.refresh_token}','${req.body.ApiScheduleStatue}','${req.body.SunScheduleStatue}')`);
                     res.json("Already\texists")
         } catch (error) {
-            let x=[] 
-            x.push(error.message)
             console.log(error.message);
-            res.json({x})
+            res.json(error.message)
         }
     else{
         console.log("asfasf",errors);
