@@ -1042,8 +1042,8 @@ module.exports.authorization = async (req, res) => {
             res.json(x)
         }
     else{
-        console.log("asfasf",errors);
-        res.json(errors)
+        console.log("asfasf",errors,errors.array()[0].msg+" "+errors.array()[0].param);
+        res.json(errors.array()[0].msg+" "+errors.array()[0].param)
     }
 }
 module.exports.sunAuthorization = async (req, res) => {
