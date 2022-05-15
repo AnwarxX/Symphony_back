@@ -98,7 +98,7 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         }
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let suncodes = await (await request.query(`select SunCode from sundefinition`)).recordset
+        let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset;
         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset

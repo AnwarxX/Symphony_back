@@ -710,6 +710,7 @@ module.exports.setInterfaceDeinition = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
+    
         let setInterfaceDeinition=await request.query(`
         begin
         DECLARE @Isdublicate BIT
@@ -954,7 +955,7 @@ module.exports.updateSun = async (req, res) => {
             req.body.sunSchedule=runtime
             //used to establish connection between database and the middleware
             //query to delete mapping data from Mapping table  in  database 
-            const values = await request.query(`update  sundefinition set SunUser='${req.body.user}',SunPassword='${req.body.password}',Sunserver='${req.body.server}',SunDatabase='${req.body.database}',type='${req.body.type}',SunSchedule='${req.body.sunSchedule}',SunScheduleStatue='${req.body.sunScheduleStatus}'
+            const values = await request.query(`update  sundefinition set SunUser='${req.body.user}',SunPassword='${req.body.password}',Sunserver='${req.body.server}',SunDatabase='${req.body.database}',type='${req.body.type}',name='${req.body.name}',SunSchedule='${req.body.sunSchedule}',SunScheduleStatue='${req.body.sunScheduleStatus}'
             Where SunCode='${req.body.sunCode}'`);
             res.json(req.body)//viewing the data which is array of obecjts which is json 
         } catch (error) {
