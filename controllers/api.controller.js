@@ -661,53 +661,57 @@ async function refreshToken(interfaceCode) {
 }
 sched()
 async function sched() {
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
-    interfaceCodes=interfaceCodes.recordset
-    monthDays={}
-    // console.log("interfaceCodes",interfaceCodes);
-    for (let i = 0; i < interfaceCodes.length; i++) {
-    //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
-    //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
-        let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
-        if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
-            monthDays[interfaceCodes[i].interfaceCode+"api"]=getDaysArray(
-                new Date(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
-                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
-                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
-                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
-                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).getMonth()-1)).toISOString(),
-                new Date().getFullYear() + "-" +
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
-                ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
-                ((apiDate[1] < 10) ? "0" :'')+apiDate[1]
-            )
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let interfaceCodes=await request.query("SELECT * From interfaceDefinition")
+        interfaceCodes=interfaceCodes.recordset
+        monthDays={}
+        // console.log("interfaceCodes",interfaceCodes);
+        for (let i = 0; i < interfaceCodes.length; i++) {
+        //    console.log("interfaceCode",interfaceCodes[i].interfaceCode);
+        //     console.log("api",interfaceCodes[i].ApiScheduleStatue,interfaceCodes[i].ApiSchedule);
+            let apiDate=interfaceCodes[i].ApiSchedule.split(" ")
+            if(interfaceCodes[i].ApiScheduleStatue=="apimonth"){
+                monthDays[interfaceCodes[i].interfaceCode+"api"]=getDaysArray(
+                    new Date(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                    ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                    ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                    ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                    ((apiDate[1] < 10) ? "0" :'')+apiDate[1]).getMonth()-1)).toISOString(),
+                    new Date().getFullYear() + "-" +
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((apiDate[3] < 10) ? "0" :'')+apiDate[3] + "T" +  
+                    ((apiDate[2] < 10) ? "0" :'')+apiDate[2] + ":" + 
+                    ((apiDate[1] < 10) ? "0" :'')+apiDate[1]
+                )
+            }
+            else{
+                let dt = new Date();
+                dt.setHours(dt.getHours() + 2);
+                let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+                monthDays[interfaceCodes[i].interfaceCode+"api"]=[dat]
+            }
+    //console.log("api",interfaceCodes[i].lockRef);
+            scJop[interfaceCodes[i].interfaceCode+"api"]=
+                schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
+                    for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode+"api"].length; j++) {
+                        allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] },interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getDiscountDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getControlDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getTaxDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        guestChecksDetails(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                        guestChecks(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
+                    }
+                })
         }
-        else{
-            let dt = new Date();
-            dt.setHours(dt.getHours() + 2);
-            let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthDays[interfaceCodes[i].interfaceCode+"api"]=[dat]
-        }
-//console.log("api",interfaceCodes[i].lockRef);
-        scJop[interfaceCodes[i].interfaceCode+"api"]=
-            schedule.scheduleJob(interfaceCodes[i].ApiSchedule, async function () {
-                for (let j = 0; j < monthDays[interfaceCodes[i].interfaceCode+"api"].length; j++) {
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getTenderMediaDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] },interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getServiceChargeDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getDiscountDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getControlDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    allForOne(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, "getTaxDailyTotals", { "locRef": interfaceCodes[i].lockRef, "busDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    guestChecksDetails(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                    guestChecks(monthDays[interfaceCodes[i].interfaceCode+"api"][j], 10, 1, { "locRef": interfaceCodes[i].lockRef, "clsdBusDt": monthDays[interfaceCodes[i].interfaceCode+"api"][j] }, interfaceCodes[i].token,interfaceCodes[i].interfaceCode)
-                }
-            })
+    } catch (error) {
+        console.log(error.message);
     }
 }
 async function schedPush(ApiSchedule,ApiScheduleStatue,interfaceCode,lockRef,token) {

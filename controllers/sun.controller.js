@@ -79,47 +79,52 @@ let monthSunDays={}
 schedSun()
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
 async function schedSun() {
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    let interfaceSunCodes=await request.query("SELECT * From interfaceConnections")
-    interfaceSunCodes=interfaceSunCodes.recordset
-    console.log("sajfoisafjoiasjf");
-    for (let i = 0; i < interfaceSunCodes.length; i++) {
-        let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
-        let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
-        // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
-        if(sunSch.recordset[0].SunScheduleStatue=="month"){
-            monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=getDaysArray(
-                new Date(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
-                ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
-                ((sunDate[1] < 10) ? "0" :'')+sunDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
-                ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
-                ((sunDate[1] < 10) ? "0" :'')+sunDate[1]).getMonth()-1)).toISOString(),
-                new Date().getFullYear() + "-" +
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
-                ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
-                ((sunDate[1] < 10) ? "0" :'')+sunDate[1]
-            )
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let interfaceSunCodes=await request.query("SELECT * From interfaceConnections")
+        interfaceSunCodes=interfaceSunCodes.recordset
+        console.log("sajfoisafjoiasjf");
+        for (let i = 0; i < interfaceSunCodes.length; i++) {
+            let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
+            let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
+            console.log(sunSch.recordset[0].SunSchedule);
+            // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
+            if(sunSch.recordset[0].SunScheduleStatue=="month"){
+                monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=getDaysArray(
+                    new Date(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
+                    ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
+                    ((sunDate[1] < 10) ? "0" :'')+sunDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
+                    ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
+                    ((sunDate[1] < 10) ? "0" :'')+sunDate[1]).getMonth()-1)).toISOString(),
+                    new Date().getFullYear() + "-" +
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((sunDate[3] < 10) ? "0" :'')+sunDate[3] + "T" +  
+                    ((sunDate[2] < 10) ? "0" :'')+sunDate[2] + ":" + 
+                    ((sunDate[1] < 10) ? "0" :'')+sunDate[1]
+                )
+            }
+            else{
+                let dt = new Date();
+                dt.setHours(dt.getHours() + 2);
+                let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+                monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=[dat]
+            }
+            sunJop[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=
+                schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
+                    for (let j = 0; j < monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type].length; j++) {
+                       // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
+                        await SUN(interfaceSunCodes[i].connectionCode,monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type][j])
+                    }
+                })
+            
         }
-        else{
-            let dt = new Date();
-            dt.setHours(dt.getHours() + 2);
-            let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=[dat]
-        }
-        sunJop[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=
-            schedule.scheduleJob(sunSch.recordset[0].SunSchedule, async function () {
-                for (let j = 0; j < monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type].length; j++) {
-                   // console.log("i am running ?",monthSunDays[interfaceSunCodes[i].interfaceCode+interfaceSunCodes[i].BU][j],interfaceSunCodes[i].interfaceCode);
-                    await SUN(interfaceSunCodes[i].connectionCode,monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type][j])
-                }
-            })
-        
+    } catch (error) {
+        console.log(error.message);
     }
 }
 async function schedSunPush(sunSchedule,SunScheduleStatue ,connectionCode,type) {

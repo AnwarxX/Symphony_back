@@ -54,66 +54,70 @@ function queries(date) {
 }
 capsSched()
 async function capsSched() {
-    let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-    let request = new sql.Request(sqlPool)
-    let capsCodes=await request.query("SELECT * From capsConfig")
-    capsCodes=capsCodes.recordset
-    monthDays={}
-    // console.log("capsCodes",capsCodes);
-    for (let i = 0; i < capsCodes.length; i++) {
-    //    console.log("capsCode",capsCodes[i].capsCode);
-    //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
-        let capsDate=capsCodes[i].capsSchedule.split(" ")
-        if(capsCodes[i].capsScheduleStatus=="month"){
-            monthDays[capsCodes[i].capsCode]=getDaysArray(
-                new Date(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
-                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
-                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
-                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
-                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).getMonth()-1)).toISOString(),
-                new Date().getFullYear() + "-" +
-                (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
-                ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
-                ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
-                ((capsDate[1] < 10) ? "0" :'')+capsDate[1]
-            )
-        }
-        else{
-            let dt = new Date();
-            dt.setHours(dt.getHours() + 2);
-            let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-            monthDays[capsCodes[i].capsCode]=[dat]
-        }
-//console.log("api",capsCodes[i].lockRef);
-        capsScJop[capsCodes[i].capsCode]=
-            schedule.scheduleJob(capsCodes[i].capsSchedule, async function () {
-                let tes=capsCodes[i]
-                try {
-                    for (let j = 0; j < monthDays[tes.capsCode].length; j++) {
-                        for (let s = 0; s < Object.keys(queries(monthDays[tes.capsCode][j])).length; s++) {
-                            capsTotal(Object.keys(queries(monthDays[tes.capsCode][j]))[s],queries(monthDays[tes.capsCode][j])[Object.keys(queries(monthDays[tes.capsCode][j]))[s]],{
-                                user: tes.user,
-                                password: tes.password,
-                                server: tes.server,
-                                database: tes.database,
-                                "options": {
-                                  "abortTransactionOnError": true,
-                                  "encrypt": false,
-                                  "enableArithAbort": true,
-                                  trustServerCertificate: true
-                                },
-                                charset: 'utf8'
-                              })
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let capsCodes=await request.query("SELECT * From capsConfig")
+        capsCodes=capsCodes.recordset
+        monthDays={}
+        // console.log("capsCodes",capsCodes);
+        for (let i = 0; i < capsCodes.length; i++) {
+        //    console.log("capsCode",capsCodes[i].capsCode);
+        //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
+            let capsDate=capsCodes[i].capsSchedule.split(" ")
+            if(capsCodes[i].capsScheduleStatus=="month"){
+                monthDays[capsCodes[i].capsCode]=getDaysArray(
+                    new Date(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).setMonth(new Date(new Date().getFullYear() + "-" +  
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]).getMonth()-1)).toISOString(),
+                    new Date().getFullYear() + "-" +
+                    (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
+                    ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
+                    ((capsDate[2] < 10) ? "0" :'')+capsDate[2] + ":" + 
+                    ((capsDate[1] < 10) ? "0" :'')+capsDate[1]
+                )
+            }
+            else{
+                let dt = new Date();
+                dt.setHours(dt.getHours() + 2);
+                let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+                monthDays[capsCodes[i].capsCode]=[dat]
+            }
+    //console.log("api",capsCodes[i].lockRef);
+            capsScJop[capsCodes[i].capsCode]=
+                schedule.scheduleJob(capsCodes[i].capsSchedule, async function () {
+                    let tes=capsCodes[i]
+                    try {
+                        for (let j = 0; j < monthDays[tes.capsCode].length; j++) {
+                            for (let s = 0; s < Object.keys(queries(monthDays[tes.capsCode][j])).length; s++) {
+                                capsTotal(Object.keys(queries(monthDays[tes.capsCode][j]))[s],queries(monthDays[tes.capsCode][j])[Object.keys(queries(monthDays[tes.capsCode][j]))[s]],{
+                                    user: tes.user,
+                                    password: tes.password,
+                                    server: tes.server,
+                                    database: tes.database,
+                                    "options": {
+                                      "abortTransactionOnError": true,
+                                      "encrypt": false,
+                                      "enableArithAbort": true,
+                                      trustServerCertificate: true
+                                    },
+                                    charset: 'utf8'
+                                  })
+                            }
                         }
+                    } catch (error) {
+                        console.log(error);
                     }
-                } catch (error) {
-                    console.log(error);
-                }
-            })
+                })
+        }
+    } catch (error) {
+       console.log(error.message); 
     }
 }
 async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,token) {
