@@ -868,8 +868,10 @@ module.exports.importInterface = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
+        console.log(sunJop);
         const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
         for (let i = 0; i < interfaseCode.recordset.length; i++) {
+            console.log(interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type);
             if (sunJop[interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type].nextInvocation() == null) {
                 interfaseCode.recordset[i]['scheduleStatus']=false
             }

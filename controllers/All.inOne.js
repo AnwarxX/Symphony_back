@@ -74,23 +74,23 @@ module.exports.getLisence = async (req, res) => {
         res.json(error.message)
     }
 }
-module.exports.getInterfaceDeinition = async (req, res) => {
-    try {
-        console.log("tfytytuy");
-        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        let request = new sql.Request(sqlPool)
-        let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
-        console.log(suncodes);
-        let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
-        let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api')`)).recordset
-        let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
-        let capscodes = await (await request.query(`select capsCode,name from capsConfig where capsCode not in (SELECT interfaceCode From interfaceConnections where type ='caps')`)).recordset
-        res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
-    }
-    catch (error) {
-        res.json(error.message)
-    }
-}
+// module.exports.getInterfaceDeinition = async (req, res) => {
+//     try {
+//         console.log("tfytytuy");
+//         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+//         let request = new sql.Request(sqlPool)
+//         let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+//         console.log(suncodes);
+//         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
+//         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api')`)).recordset
+//         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
+//         let capscodes = await (await request.query(`select capsCode,name from capsConfig where capsCode not in (SELECT interfaceCode From interfaceConnections where type ='caps')`)).recordset
+//         res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
+//     }
+//     catch (error) {
+//         res.json(error.message)
+//     }
+// }
 module.exports.getInterfaceDeinition = async (req, res) => {
     try {
         if (req.body.interfaceCode==undefined) {
