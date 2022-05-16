@@ -456,9 +456,7 @@ module.exports.import = async (req, res) => {
             }
             else if (req.body.api=='all') {
                 for (let i = 0; i < Object.keys(queries(req.body.date)).length; i++) {
-                    console.log(i);
                     if (i==Object.keys(queries(req.body.date)).length-1) {
-                        console.log(res);
                         await capsTotal(Object.keys(queries(req.body.date))[i],queries(req.body.date)[Object.keys(queries(req.body.date))[i]],{
                             user: capsCodes.recordset[0].user,
                             password: capsCodes.recordset[0].password,

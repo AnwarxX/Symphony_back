@@ -1655,8 +1655,8 @@ module.exports.statusData = async (req, res) => {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         let data;
-        console.log(req.body);
-        if (req.body.date=="") {
+        console.log(req.body,"safjoiasjf");
+        if (req.body.date==""||req.body.date==undefined) {
             data =await request.query(`select * from ImportStatus order by Date desc`)
         }
         else{
