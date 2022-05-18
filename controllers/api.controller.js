@@ -829,7 +829,7 @@ module.exports.interfaceCode = async (req, res) => {
         //used to establish connection between database and the middleware
         const interfacedata = await request.query(`SELECT interfaceCode From  interfaceDefinition `)
           //used to establish connection between database and the middleware
-          const apidata = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'license' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`)
+          const apidata = await request.query(`SELECT name FROM sys.tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'license' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`)
         res.json({apidata:apidata.recordset,interfacedata:interfacedata.recordset})//viewing the data which is array of obecjts which is json  
     } catch (error) {
         res.json(error.message)
@@ -1427,7 +1427,7 @@ module.exports.SysData = async (req, res) => {
         //used to establish connection between database and the middleware
         let data = []//an empty array used to push all column names with it's table name
         
-        const tables = await request.query(`SELECT name FROM sys.Tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'license' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`);//retrive all tables name
+        const tables = await request.query(`SELECT name FROM sys.tables where name != 'interfaceDefinition' and name != 'MappingDefinition' and name != 'ImportStatus' and name != 'Mapping' and name != 'PropertySettings' and name != 'GuestChecksLineDetails' and name != 'license' and name != 'sundefinition' and name != 'capsConfig' and name != 'interfaceConnections' and name != 'GuestChecksLineDetails'`);//retrive all tables name
         console.log(tables);
         for (let i = 0; i < tables.recordset.length; i++) {//iterate over all the table names
             let x = {}//object that will hold each table name with it's columns
