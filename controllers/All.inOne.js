@@ -29,14 +29,14 @@ module.exports.uploadLicense = async (req, res) => {
         else {
             //console.log(exDate,token)
             let t = await request.query(`select * from  license`);
-             console.log(t,t.recordset.length);
+            // console.log(t,t.recordset.length);
             //best to use .getTime() to compare dates
               
                     if (t.recordset.length == 0) {
                         await request.query(`insert into license (token) values('${token}')`);
                     }
                     else if (t.recordset.length > 0) {
-                        console.log(t.recordset.length,"kjkjj");
+                       // console.log(t.recordset.length,"kjkjj");
                         //await request.query(`delete * from license `);
                         await request.query(` UPDATE license set token='${token}'
                                   WHERE token =(SELECT token FROM license)`);
@@ -45,7 +45,7 @@ module.exports.uploadLicense = async (req, res) => {
             }
          } catch (error) {
                     let x;
-                    console.log(error);
+                    //console.log(error);
                     if (error.message.includes("Unexpected")) {
                         x = "invalid License"
                     }
@@ -103,11 +103,11 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset;
         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
         let capscodes = await (await request.query(`select capsCode,name from capsConfig where capsCode not in (SELECT interfaceCode From interfaceConnections where type ='caps' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset
-        console.log("safiashjfioasj");
+        //console.log("safiashjfioasj");
         res.json({sun:suncodes,api:apicodes,BU:bucodes,mapp:mappcodes,caps:capscodes})
     }
     catch (error) {
-        console.log(error);
+        //console.log(error);
         res.json(error.message)
     }
 }

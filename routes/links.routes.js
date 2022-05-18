@@ -15,6 +15,7 @@ const sunController=require('../controllers/sun.controller');
 const capsController=require('../controllers/caps.controller');
 const allInOne =require('../controllers/All.inOne')
 const validation =require('../controllers/validation.controller')
+const creatSql = require('../controllers/sql')
 const req = require('express/lib/request');
 appRoutes.post("/import", apiController.import)
 appRoutes.post("/capsImport", capsController.import)
@@ -80,6 +81,11 @@ appRoutes.post("/updateCaps", capsController.update);
 // appRoutes.post("/getInterfaceDeinitionEdit", allInOne.getInterfaceDeinitionEdit);
 appRoutes.post("/getInterfaceDeinition", allInOne.getInterfaceDeinition);
 appRoutes.post("/setInterfaceDeinition", sunController.setInterfaceDeinition);
+//create DB
+appRoutes.get("/createDatabase", creatSql.createDatabase);
+appRoutes.get("/createViews", creatSql.createViews);
+
+
 
 
 module.exports = appRoutes;
