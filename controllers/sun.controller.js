@@ -86,7 +86,7 @@ async function schedSun() {
         interfaceSunCodes=interfaceSunCodes.recordset
         console.log("sajfoisafjoiasjf");
         for (let i = 0; i < interfaceSunCodes.length; i++) {
-            let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sunDefinition where sunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
+            let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sundefinition where SunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
             let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
             console.log(sunSch.recordset[0].SunSchedule);
             // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
@@ -190,7 +190,7 @@ module.exports.start = async (req, res) => {
         let request = new sql.Request(sqlPool)
         let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
         interfaceCodes=interfaceCodes.recordset
-        let sunSch=await request.query(`SELECT SunSchedule From sunDefinition where sunCode= '${interfaceCodes[0].sunCode}'`)
+        let sunSch=await request.query(`SELECT SunSchedule From sundefinition where SunCode= '${interfaceCodes[0].sunCode}'`)
         sunJop[req.body.connectionCode+interfaceCodes[0].type].reschedule(sunSch.recordset[0].SunSchedule)
         res.json("Schedule has started")
     }catch (error){
@@ -226,7 +226,7 @@ async function SUN(interfaceCode, dat,type,res, req) {
         console.log(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `);
         let connectionCode=await request.query(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `)
         console.log(connectionCode.recordset[0],interfaceCod);
-        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sunDefinition where sunCode=${connectionCode.recordset[0].sunCode} `);
+        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sundefinition where SunCode=${connectionCode.recordset[0].sunCode} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where BU='${connectionCode.recordset[0].BUCode}'`)
         let pass =sunCon.recordset[0].SunPassword
         var bytes = CryptoJS.AES.decrypt(pass, 'hashSun');
@@ -720,9 +720,9 @@ module.exports.setInterfaceDeinition = async (req, res) => {
         begin
         DECLARE @Isdublicate BIT
         IF NOT EXISTS (SELECT * FROM interfaceConnections
-        WHERE [sunCode]=${req.body.sunCode} and interfaceCode=${req.body.interfaceCode} and type='${req.body.type}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
+        WHERE [SunCode]=${req.body.sunCode} and interfaceCode=${req.body.interfaceCode} and type='${req.body.type}' and [mappCode]='${req.body.mappCode}' and BUCode='${req.body.BUCode}')
         BEGIN
-        INSERT INTO [dbo].[interfaceConnections] ([sunCode],[interfaceCode],[type],[mappCode],[BUCode])
+        INSERT INTO [dbo].[interfaceConnections] ([SunCode],[interfaceCode],[type],[mappCode],[BUCode])
         VALUES (${req.body.sunCode},${req.body.interfaceCode},'${req.body.type}','${req.body.mappCode}','${req.body.BUCode}')
         END
         else
@@ -731,7 +731,7 @@ module.exports.setInterfaceDeinition = async (req, res) => {
         SELECT @Isdublicate AS 'Isdublicate'
         end
         end`)
-        const sunCon = await request.query(`SELECT * From  sunDefinition where sunCode='${req.body.sunCode}' `);
+        const sunCon = await request.query(`SELECT * From  sundefinition where SunCode='${req.body.sunCode}' `);
         const connectionCode=await request.query(`SELECT max(connectionCode) From  interfaceConnections `);
         if(setInterfaceDeinition.recordset==undefined){
             schedSunPush(sunCon.recordset[0].SunSchedule,sunCon.recordset[0].SunScheduleStatue ,connectionCode.recordset[0][""],req.body.type)
@@ -780,7 +780,7 @@ module.exports.PropertySettings = async (req, res) => {
 					END
                     end`)
             if(values.recordset[0].Isdublicate != false){ 
-            // const sunCon = await request.query(`SELECT * From  sunDefinition where interfaceCode='${req.body.interfaceCode}' `);
+            // const sunCon = await request.query(`SELECT * From  sundefinition where interfaceCode='${req.body.interfaceCode}' `);
             //await request.close()
             // console.log(sunCon,sunCon.recordset[0].SunSchedule);
             // let sunConuser = sunCon.recordset[0].SunUser;
@@ -838,7 +838,7 @@ module.exports.test = async (req, res) => {
     // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     // let request = new sql.Request(sqlPool)
     // let interfaceCodes=await request.query("SELECT interfaceCode From PropertySettings")
-    // let apiSch=await request.query(`SELECT ApiSchedule From sunDefinition where interfaceCode= ${req.body.interfaceCode}`)
+    // let apiSch=await request.query(`SELECT ApiSchedule From sundefinition where interfaceCode= ${req.body.interfaceCode}`)
     // interfaceCodes=interfaceCodes.recordset
     // let x;
     // for (let i = 0; i < interfaceCodes.length; i++) {
@@ -891,7 +891,7 @@ module.exports.update = async (req, res) => {
     await request.query(`UPDATE [dbo].[interfaceConnections]
                 SET [type] = '${req.body.type}'
                 ,[interfaceCode] = ${req.body.interfaceCode}
-                ,[sunCode] = ${req.body.sunCode}
+                ,[SunCode] = ${req.body.sunCode}
                 ,[mappCode] = '${req.body.mappCode}'
                 ,[BUCode] = '${req.body.BUCode}'
                 WHERE connectionCode=${req.body.connectionCode}`);

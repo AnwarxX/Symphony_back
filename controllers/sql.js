@@ -467,7 +467,7 @@ CREATE TABLE [dbo].[interfaceConnections](
 	[connectionCode] [int] IDENTITY(1,1) NOT NULL,
 	[type] [nvarchar](50) NULL,
 	[interfaceCode] [int] NULL,
-	[sunCode] [int] NULL,
+	[SunCode] [int] NULL,
 	[mappCode] [nvarchar](50) NULL,
 	[BUCode] [nvarchar](50) NULL
 ) ON [PRIMARY]
