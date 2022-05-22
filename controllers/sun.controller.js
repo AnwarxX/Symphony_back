@@ -250,7 +250,7 @@ async function SUN(interfaceCode, dat,type,res, req) {
         ,isnull(T10.Target,'#') 'T10'
         
         from 
-        (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN_NET Main
+        (select Main.Reference , Acc.Target 'Account', cast(sum(Main.Total) as decimal(18,2)) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN_NET Main
         left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
         
         where Main.busDt = '${date}'
@@ -279,7 +279,7 @@ async function SUN(interfaceCode, dat,type,res, req) {
             ,isnull(T10.Target,'#') 'T10'
             
             from 
-            (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN_NET Main
+            (select Main.Reference , Acc.Target 'Account', cast(sum(Main.Total) as decimal(18,2)) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN_NET Main
             left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
             
             where Main.busDt = '${date}'
@@ -308,7 +308,7 @@ async function SUN(interfaceCode, dat,type,res, req) {
             ,isnull(T10.Target,'#') 'T10'
             
             from 
-            (select Main.Reference , Acc.Target 'Account', sum(Main.Total) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
+            (select Main.Reference , Acc.Target 'Account', cast(sum(Main.Total) as decimal(18,2)) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN Main
             left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
             where Main.busDt = '${date}'
             group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
