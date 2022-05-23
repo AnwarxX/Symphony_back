@@ -84,11 +84,9 @@ async function schedSun() {
         let request = new sql.Request(sqlPool)
         let interfaceSunCodes=await request.query("SELECT * From interfaceConnections")
         interfaceSunCodes=interfaceSunCodes.recordset
-        console.log("sajfoisafjoiasjf");
         for (let i = 0; i < interfaceSunCodes.length; i++) {
             let sunSch=await request.query(`SELECT SunSchedule,SunScheduleStatue From sundefinition where SunCode= ${parseInt(interfaceSunCodes[i].sunCode)}`)
             let sunDate=sunSch.recordset[0].SunSchedule.split(" ")
-            console.log(sunSch.recordset[0].SunSchedule);
             // console.log("sun",sunSch.recordset[0].SunScheduleStatue,sunSch.recordset[0].SunSchedule);
             if(sunSch.recordset[0].SunScheduleStatue=="month"){
                 monthSunDays[interfaceSunCodes[i].connectionCode+interfaceSunCodes[i].type]=getDaysArray(
@@ -171,6 +169,24 @@ async function schedSunPush(sunSchedule,SunScheduleStatue ,connectionCode,type) 
         })
     // }
 }
+schedule.scheduleJob('0 59 23 * * *', async function () {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
+        let dt = new Date();
+        dt.setHours(dt.getHours() + 2);
+        let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+        for (let i = 0; i < interfaseCode.recordset.length; i++) {
+            if (sunJop[interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type].nextInvocation() != null) {
+                await SUN(interfaseCode.recordset[i].connectionCode,dat)
+            }
+        }
+        console.log('-----------------------------------------------');
+    } catch (error) {
+        console.log(error);
+    }
+})
 module.exports.stop = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
@@ -226,7 +242,7 @@ async function SUN(interfaceCode, dat,type,res, req) {
         console.log(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `);
         let connectionCode=await request.query(`SELECT * From  interfaceConnections where connectionCode=${interfaceCod} `)
         console.log(connectionCode.recordset[0],interfaceCod);
-        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule From  sundefinition where SunCode=${connectionCode.recordset[0].sunCode} `);
+        const sunCon = await request.query(`SELECT SunUser,SunPassword,Sunserver,SunDatabase,SunSchedule,type From  sundefinition where SunCode=${connectionCode.recordset[0].sunCode} `);
         const buD = await request.query(`SELECT BU,JournalType,Currencycode,LedgerImportDescription,SuspenseAccount from PropertySettings where BU='${connectionCode.recordset[0].BUCode}'`)
         let pass =sunCon.recordset[0].SunPassword
         var bytes = CryptoJS.AES.decrypt(pass, 'hashSun');
@@ -239,35 +255,14 @@ async function SUN(interfaceCode, dat,type,res, req) {
         let Currencycode = buD.recordset[0].Currencycode
         let LedgerImportDescription = buD.recordset[0].LedgerImportDescription
         let data;
-        console.log(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
-        ,isnull(T03.Target,'#') 'T03'
-        ,isnull(T04.Target,'#') 'T04'
-        ,isnull(T05.Target,'#') 'T05'
-        ,isnull(T06.Target,'#') 'T06'
-        ,isnull(T07.Target,'#') 'T07'
-        ,isnull(T08.Target,'#') 'T08'
-        ,isnull(T09.Target,'#') 'T09'
-        ,isnull(T10.Target,'#') 'T10'
-        
-        from 
-        (select Main.Reference , Acc.Target 'Account', cast(sum(Main.Total) as decimal(18,2)) 'Total', Main.rvcNum , Main.busDt 'TransactionDate' , ltrim(Year(Main.busDt))+RIGHT('000'+ ltrim(MONTH(Main.busDt)),3) 'Period' from VIEW_JV_MAIN_NET Main
-        left join Mapping Acc on Main.Reference = Acc.Source and Acc.MappingType = 'Account' and Acc.MappingCode = '${MappingCode}'
-        
-        where Main.busDt = '${date}'
-        group by Main.Reference,Main.rvcNum , Main.busDt , Acc.Target
-        ) as Main
-        
-        left join Mapping as T01 on Main.Reference = T01.Source and Main.rvcNum = T01.RevenuCenter and T01.ALevel = 1 and T01.MappingCode = '${MappingCode}'
-        left join Mapping as T02 on Main.Reference = T02.Source and Main.rvcNum = T02.RevenuCenter and T02.ALevel =  2  and T02.MappingCode = '${MappingCode}'
-        left join Mapping as T03 on Main.Reference = T03.Source and Main.rvcNum = T03.RevenuCenter and T03.ALevel =  3  and T03.MappingCode = '${MappingCode}'
-        left join Mapping as T04 on Main.Reference = T04.Source and Main.rvcNum = T04.RevenuCenter and T04.ALevel =  4  and T04.MappingCode = '${MappingCode}'
-        left join Mapping as T05 on Main.Reference = T05.Source and Main.rvcNum = T05.RevenuCenter and T05.ALevel =  5  and T05.MappingCode = '${MappingCode}'
-        left join Mapping as T06 on Main.Reference = T06.Source and Main.rvcNum = T06.RevenuCenter and T06.ALevel =  6  and T06.MappingCode = '${MappingCode}'
-        left join Mapping as T07 on Main.Reference = T07.Source and Main.rvcNum = T07.RevenuCenter and T07.ALevel =  7  and T07.MappingCode = '${MappingCode}'
-        left join Mapping as T08 on Main.Reference = T08.Source and Main.rvcNum = T08.RevenuCenter and T08.ALevel =  8  and T08.MappingCode = '${MappingCode}'
-        left join Mapping as T09 on Main.Reference = T09.Source and Main.rvcNum = T09.RevenuCenter and T09.ALevel =  9  and T09.MappingCode = '${MappingCode}'
-        left join Mapping as T10 on Main.Reference = T10.Source and Main.rvcNum = T10.RevenuCenter and T10.ALevel =  10  and T10.MappingCode = '${MappingCode}'`);
-        if(req.body.Types=="Net")
+        let type
+        console.log(sunCon.recordset[0].type);
+        if (req==undefined) {
+            type=sunCon.recordset[0].type
+        } else {
+            type=req.body.Types
+        }
+        if(type=="Net")
             data=await request.query(`select Main.Account , Main.Reference , Main.Total , Main.rvcNum ,Main.TransactionDate, Main.Period , isnull(T01.Target,'#') 'T01' , isnull(T02.Target,'#') 'T02' 
             ,isnull(T03.Target,'#') 'T03'
             ,isnull(T04.Target,'#') 'T04'
@@ -907,7 +902,6 @@ module.exports.getSun = async (req, res) => {
         res.json(error.message)
     }
 }
-
 module.exports.Delete = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
