@@ -1445,20 +1445,10 @@ module.exports.SysData = async (req, res) => {
 }
 module.exports.stop = async (req, res) => {
     try {
-        // let sqlPool = await mssql.GetCreateIfNotExistPool(config)
-        // let request = new sql.Request(sqlPool)
-        // let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
-        // interfaceCodes=interfaceCodes.recordset
-        // let x;
-        // for (let i = 0; i < interfaceCodes.length; i++) {
-        //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-        //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-        //         x=i
-        //     }
-        // }
         scJop[req.body.interfaceCode+'api'].cancel()
         res.json("Schedule has stopped")
     } catch (error) {
+        console.log(error);
         res.json(error.message)
     }
 }
@@ -1466,19 +1456,11 @@ module.exports.start = async (req, res) => {
     try {
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        // let interfaceCodes=await request.query("SELECT interfaceCode From interfaceDefinition")
-        let apiSch=await request.query(`SELECT ApiSchedule From interfaceDefinition where interfaceCode= ${req.body.interfaceCode}`)
-        // interfaceCodes=interfaceCodes.recordset
-        // let x;
-        // for (let i = 0; i < interfaceCodes.length; i++) {
-        //     console.log(interfaceCodes[i].interfaceCode ,req.body.interfaceCode);
-        //     if (interfaceCodes[i].interfaceCode==req.body.interfaceCode) {
-        //         x=i
-        //     }
-        // }
-        scJop[req.body.interfaceCode+'api'].reschedule(apiSch.recordset[0].ApiSchedule)
+        let interface=await (await request.query(`SELECT * From interfaceDefinition where interfaceCode='${req.body.interfaceCode}'`)).recordset[0]
+        scJop[req.body.interfaceCode+'api'].reschedule(interface.ApiSchedule)
         res.json("Schedule has started")
-    } catch (error) {
+    }catch (error){
+        console.log(error);
         res.json(error.message)
     }
 }

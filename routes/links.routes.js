@@ -55,6 +55,8 @@ appRoutes.post("/stop", apiController.stop)
 appRoutes.post("/start", apiController.start)
 appRoutes.post("/stopSun", sunController.stop)
 appRoutes.post("/startSun", sunController.start)
+appRoutes.post("/stopCaps", capsController.stop)
+appRoutes.post("/startCaps", capsController.start)
 // this endpoint used to retrive all num value from  RevenuCenter table
 appRoutes.get('/revenue', apiController.revenue);
 //this endpoint used to send data(table name and column name) from frontend to search in database and get all column values 

@@ -59,14 +59,14 @@ async function capsSched() {
         let request = new sql.Request(sqlPool)
         let capsCodes=await request.query("SELECT * From capsConfig")
         capsCodes=capsCodes.recordset
-        monthDays={}
+        capsMonthDays={}
         // console.log("capsCodes",capsCodes);
         for (let i = 0; i < capsCodes.length; i++) {
         //    console.log("capsCode",capsCodes[i].capsCode);
         //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
             let capsDate=capsCodes[i].capsSchedule.split(" ")
             if(capsCodes[i].capsScheduleStatus=="month"){
-                monthDays[capsCodes[i].capsCode]=getDaysArray(
+                capsMonthDays[capsCodes[i].capsCode]=getDaysArray(
                     new Date(new Date(new Date().getFullYear() + "-" +  
                     (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                     ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
@@ -87,16 +87,15 @@ async function capsSched() {
                 let dt = new Date();
                 dt.setHours(dt.getHours() + 2);
                 let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-                monthDays[capsCodes[i].capsCode]=[dat]
+                capsMonthDays[capsCodes[i].capsCode]=[dat]
             }
-    //console.log("api",capsCodes[i].lockRef);
-            capsScJop[capsCodes[i].capsCode]=
+            capsScJop[capsCodes[i].capsCode+'caps']=
                 schedule.scheduleJob(capsCodes[i].capsSchedule, async function () {
                     let tes=capsCodes[i]
                     try {
-                        for (let j = 0; j < monthDays[tes.capsCode].length; j++) {
-                            for (let s = 0; s < Object.keys(queries(monthDays[tes.capsCode][j])).length; s++) {
-                                capsTotal(Object.keys(queries(monthDays[tes.capsCode][j]))[s],queries(monthDays[tes.capsCode][j])[Object.keys(queries(monthDays[tes.capsCode][j]))[s]],{
+                        for (let j = 0; j < capsMonthDays[tes.capsCode].length; j++) {
+                            for (let s = 0; s < Object.keys(queries(capsMonthDays[tes.capsCode][j])).length; s++) {
+                                capsTotal(Object.keys(queries(capsMonthDays[tes.capsCode][j]))[s],queries(capsMonthDays[tes.capsCode][j])[Object.keys(queries(capsMonthDays[tes.capsCode][j]))[s]],{
                                     user: tes.user,
                                     password: tes.password,
                                     server: tes.server,
@@ -125,17 +124,17 @@ async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,to
     // let request = new sql.Request(sqlPool)
     // let capsCodes=await request.query("SELECT * From interfaceDefinition")
     // capsCodes=capsCodes.recordset
-    // let monthDays=[]
+    // let capsMonthDays=[]
     // for (let i = 0; i < capsCodes.length; i++) {
     //    // console.log(capsCodes[i].capsCode);
     //     // apiSch.recordset[0].capsSchedule='* * * * * *'
     //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
-    //     console.log(monthDays);
+    //     console.log(capsMonthDays);
     capsScJop[capsCode]=
         schedule.scheduleJob(capsSchedule, async function () {
             let capsDate=capsSchedule.split(" ")
             if(capsScheduleStatue=="month"){
-                monthDays[capsCode]=getDaysArray(
+                capsMonthDays[capsCode]=getDaysArray(
                     new Date(new Date(new Date().getFullYear() + "-" +  
                     (((new Date().getMonth()+1) < 10) ? "0" :'')  +(new Date().getMonth()+ 1)+ "-" + 
                     ((capsDate[3] < 10) ? "0" :'')+capsDate[3] + "T" +  
@@ -156,12 +155,12 @@ async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,to
                 let dt = new Date();
                 dt.setHours(dt.getHours() + 2);
                 let dat = new Date(dt.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-                monthDays[capsCode]=[dat]
+                capsMonthDays[capsCode]=[dat]
             }
-            for (let j = 0; j < monthDays[capsCode].length; j++) {
+            for (let j = 0; j < capsMonthDays[capsCode].length; j++) {
                 for (let s = 0; s < Object.keys(
-                    (monthDays[capsCode][j])).length; i++) {
-                    capsTotal(Object.keys(queries(monthDays[capsCode][j]))[s],queries(monthDays[capsCode][j])[Object.keys(queries(monthDays[capsCode][j]))[s]],{
+                    (capsMonthDays[capsCode][j])).length; i++) {
+                    capsTotal(Object.keys(queries(capsMonthDays[capsCode][j]))[s],queries(capsMonthDays[capsCode][j])[Object.keys(queries(capsMonthDays[capsCode][j]))[s]],{
                         user: capsCodes[i].user,
                         password: capsCodes[i].password,
                         server: capsCodes[i].server,
@@ -250,6 +249,27 @@ async function capsTotal(capsName,query,capsConfig,capsCode,dat,respo) {
         if (respo != undefined) {
             respo.json(error.message)
         }
+    }
+}
+module.exports.stop = async (req, res) => {
+    try {
+        capsScJop[req.body.interfaceCode+'caps'].cancel()
+        res.json("Schedule has stopped")
+    } catch (error) {
+        console.log(error);
+        res.json(error.message)
+    }
+}
+module.exports.start = async (req, res) => {
+    try {
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let caps=await (await request.query(`SELECT * From capsConfig where capsCode='${req.body.interfaceCode}'`)).recordset[0]
+        capsScJop[req.body.interfaceCode+'caps'].reschedule(caps.capsSchedule)
+        res.json("Schedule has started")
+    }catch (error){
+        console.log(error);
+        res.json(error.message)
     }
 }
 module.exports.capsConigration = async (req, res) => {
