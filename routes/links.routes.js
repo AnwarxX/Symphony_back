@@ -84,6 +84,7 @@ appRoutes.post("/setInterfaceDeinition", sunController.setInterfaceDeinition);
 //create DB
 appRoutes.get("/createDatabase", creatSql.createDatabase);
 appRoutes.get("/createViews", creatSql.createViews);
+appRoutes.get("/getAllNames", allInOne.getAllNames);
 
 
 

@@ -111,3 +111,21 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         res.json(error.message)
     }
 }
+module.exports.getAllNames = async (req, res) => {
+    try {
+        if (req.body.interfaceCode==undefined) {
+            req.body.interfaceCode=0
+        }
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+        let apicodes = await (await request.query(`select interfaceCode as code,name from interfaceDefinition`)).recordset;
+        let capscodes = await (await request.query(`select capsCode as code,name from capsConfig`)).recordset
+        //console.log("safiashjfioasj");
+        res.json({sun:suncodes,api:apicodes,caps:capscodes})
+    }
+    catch (error) {
+        //console.log(error);
+        res.json(error.message)
+    }
+}
