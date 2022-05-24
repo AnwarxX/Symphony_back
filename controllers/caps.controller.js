@@ -29,7 +29,7 @@ function queries(date) {
         where CAST(CheckOpen as DATE)='${date}'
         group by RevCtrID
         `,
-        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
+        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckNumber as chkNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
         getMenuItemDimensions:`SELECT MajGrpObjNum as majGrpNum, ObjectNumber as num FROM MENU_ITEM_MASTER`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
         GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[gross],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
