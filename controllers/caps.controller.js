@@ -30,7 +30,7 @@ function queries(date) {
         group by RevCtrID
         `,
         getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckNumber as chkNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
-        getMenuItemDimensions:`SELECT MajGrpObjNum as majGrpNum, ObjectNumber as num FROM MENU_ITEM_MASTER`,
+        getMenuItemDimensions:`SELECT mm.MajGrpObjNum as majGrpNum, mm.ObjectNumber as num,st.StringText as name FROM MENU_ITEM_MASTER as mm,STRING_TABLE as st where mm.NameID=st.StringNumberID`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
         GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[gross],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
         getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name , TendMedType as type  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
@@ -178,7 +178,7 @@ async function capsSchedPush(capsSchedule,capsScheduleStatue,capsCode,lockRef,to
         })
     // }
 }
-async function capsTotal(capsName,query,capsConfig,capsCode,dat,respo) {
+async function capsTotal(capsName,query,capsConfig,capsCode,dat,name,respo) {
     let sqlPool = await mssql.GetCreateIfNotExistPool(config)
     let request = new sql.Request(sqlPool)
     try {
@@ -223,16 +223,16 @@ async function capsTotal(capsName,query,capsConfig,capsCode,dat,respo) {
         }
         await request.query(
             `IF NOT EXISTS (SELECT * FROM ImportStatus
-            WHERE  ApiName='${capsName}-caps' and Date='${dat}' and interfaceCode='${capsCode}')
+            WHERE  ApiName='${capsName}-${name}-caps' and Date='${dat}' and interfaceCode='${capsCode}')
             BEGIN
             INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-            VALUES ('${capsName}-caps','${dat}','Successful','${capsCode}')
+            VALUES ('${capsName}-${name}-caps','${dat}','Successful','${capsCode}')
             END
             else
             begin
             UPDATE ImportStatus
             SET Status = 'Successful'
-            WHERE ApiName='${capsName}-caps' and Date='${dat}'
+            WHERE ApiName='${capsName}-${name}-caps' and Date='${dat}'
             end`)
         if (respo != undefined) {
             respo.json('submitted successfully')
@@ -241,10 +241,10 @@ async function capsTotal(capsName,query,capsConfig,capsCode,dat,respo) {
         console.log(error);
         await request.query(
             `IF NOT EXISTS (SELECT * FROM ImportStatus
-            WHERE  ApiName='${capsName}-caps' and Date='${dat}' and interfaceCode='${capsCode}')
+            WHERE  ApiName='${capsName}-${name}-caps' and Date='${dat}' and interfaceCode='${capsCode}')
             BEGIN
             INSERT INTO ImportStatus (ApiName,Date,Status,interfaceCode)
-            VALUES ('${capsName}-caps','${dat}','Failed','${capsCode}')
+            VALUES ('${capsName}-${name}-caps','${dat}','Failed','${capsCode}')
             END`)
         if (respo != undefined) {
             respo.json(error.message)
@@ -459,7 +459,7 @@ module.exports.import = async (req, res) => {
                       trustServerCertificate: true
                     },
                     charset: 'utf8'
-                  },req.body.interface,req.body.date)
+                  },req.body.interface,req.body.date,capsCodes.recordset[0].name)
                 await capsTotal('GuestChecksLineDetails',queries(req.body.date)['GuestChecksLineDetails'],{
                       user: capsCodes.recordset[0].user,
                       password: capsCodes.recordset[0].password,
@@ -472,7 +472,7 @@ module.exports.import = async (req, res) => {
                         trustServerCertificate: true
                       },
                       charset: 'utf8'
-                    },req.body.interface,req.body.date,res)
+                    },req.body.interface,req.body.date,capsCodes.recordset[0].name,res)
             }
             else if (req.body.api=='all') {
                 for (let i = 0; i < Object.keys(queries(req.body.date)).length; i++) {
@@ -489,7 +489,7 @@ module.exports.import = async (req, res) => {
                               trustServerCertificate: true
                             },
                             charset: 'utf8'
-                          },req.body.interface,req.body.date,res)
+                          },req.body.interface,req.body.date,capsCodes.recordset[0].name,res)
                     }
                     await capsTotal(Object.keys(queries(req.body.date))[i],queries(req.body.date)[Object.keys(queries(req.body.date))[i]],{
                         user: capsCodes.recordset[0].user,
@@ -503,7 +503,7 @@ module.exports.import = async (req, res) => {
                           trustServerCertificate: true
                         },
                         charset: 'utf8'
-                      },req.body.interface,req.body.date)
+                      },req.body.interface,req.body.date,capsCodes.recordset[0].name)
                 }
             }
             else{
@@ -519,7 +519,7 @@ module.exports.import = async (req, res) => {
                       trustServerCertificate: true
                     },
                     charset: 'utf8'
-                  },req.body.interface,req.body.date,res)
+                  },req.body.interface,req.body.date,capsCodes.recordset[0].name,res)
             }
         } catch (error) {
             console.log("\x1b[31m",error);
