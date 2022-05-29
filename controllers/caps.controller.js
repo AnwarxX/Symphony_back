@@ -29,6 +29,9 @@ function queries(date) {
         where CAST(CheckOpen as DATE)='${date}'
         group by RevCtrID
         `,
+    //     select  CheckID as guestCheckId, max(cast(CheckClose as date) ) as busDt , MENUITEMID miNum , sum(AmountAfterDiscount) 'aggTtl',  sum(Gross_B_DSC)  as gross ,  0 as 'guestCheckLineItemId' from Daily_Sales_New
+    //     where cast(CheckClose as date) = '${date}' 
+    //    group by  CheckID , MENUITEMID
         getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckNumber as chkNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
         getMenuItemDimensions:`SELECT mm.MajGrpObjNum as majGrpNum, mm.ObjectNumber as num,st.StringText as name FROM MENU_ITEM_MASTER as mm,STRING_TABLE as st where mm.NameID=st.StringNumberID`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
@@ -253,6 +256,7 @@ async function capsTotal(capsName,query,capsConfig,capsCode,dat,name,respo) {
 }
 module.exports.stop = async (req, res) => {
     try {
+        console.log(req.body.interfaceCode);
         capsScJop[req.body.interfaceCode+'caps'].cancel()
         res.json("Schedule has stopped")
     } catch (error) {
@@ -262,6 +266,8 @@ module.exports.stop = async (req, res) => {
 }
 module.exports.start = async (req, res) => {
     try {
+        console.log(req.body.interfaceCode,"start");
+
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         let caps=await (await request.query(`SELECT * From capsConfig where capsCode='${req.body.interfaceCode}'`)).recordset[0]

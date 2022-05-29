@@ -545,12 +545,12 @@ CREATE TABLE [dbo].[PropertySettings](
 ) ON [PRIMARY]
 
 `);await request.query(`
-/****** Object:  Table [dbo].[sundefinition]    Script Date: 17/05/2022 8:37:12 AM ******/
+/****** Object:  Table [dbo].[sunDefinition]    Script Date: 17/05/2022 8:37:12 AM ******/
 SET ANSI_NULLS ON
 `);await request.query(`
 SET QUOTED_IDENTIFIER ON
 `);await request.query(`
-CREATE TABLE [dbo].[sundefinition](
+CREATE TABLE [dbo].[sunDefinition](
 	[SunCode] [int] IDENTITY(1,1) NOT NULL,
 	[SunUser] [nvarchar](150) NULL,
 	[SunPassword] [nvarchar](200) NULL,

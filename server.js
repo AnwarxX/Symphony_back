@@ -1,4 +1,4 @@
-//In this main page we define and require the packages that we will need in our ptoject 
+ //In this main page we define and require the packages that we will need in our ptoject 
 // first we define the express becouse it helps us to handle the http requests
 const express=require('express');
 //we use cors that we allow other apps to access our API 

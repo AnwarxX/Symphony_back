@@ -79,7 +79,7 @@ module.exports.getLisence = async (req, res) => {
 //         console.log("tfytytuy");
 //         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
 //         let request = new sql.Request(sqlPool)
-//         let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+//         let suncodes = await (await request.query(`select SunCode,name from sunDefinition`)).recordset
 //         console.log(suncodes);
 //         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
 //         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api')`)).recordset
@@ -98,7 +98,7 @@ module.exports.getInterfaceDeinition = async (req, res) => {
         }
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+        let suncodes = await (await request.query(`select SunCode,name from sunDefinition`)).recordset
         let bucodes = await (await request.query(`select BU from PropertySettings`)).recordset
         let apicodes = await (await request.query(`select interfaceCode,name from interfaceDefinition where interfaceCode not in (SELECT interfaceCode From interfaceConnections where type ='api' and interfaceCode !=  ${req.body.interfaceCode})`)).recordset;
         let mappcodes = await (await request.query(`select MappingCode from Mapping`)).recordset
@@ -118,7 +118,7 @@ module.exports.getAllNames = async (req, res) => {
         }
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
-        let suncodes = await (await request.query(`select SunCode,name from sundefinition`)).recordset
+        let suncodes = await (await request.query(`select SunCode,name from sunDefinition`)).recordset
         let apicodes = await (await request.query(`select interfaceCode as code,name from interfaceDefinition`)).recordset;
         let capscodes = await (await request.query(`select capsCode as code,name from capsConfig`)).recordset
         //console.log("safiashjfioasj");
