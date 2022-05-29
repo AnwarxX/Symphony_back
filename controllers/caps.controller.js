@@ -63,7 +63,6 @@ async function capsSched() {
         let capsCodes=await request.query("SELECT * From capsConfig")
         capsCodes=capsCodes.recordset
         capsMonthDays={}
-        // console.log("capsCodes",capsCodes);
         for (let i = 0; i < capsCodes.length; i++) {
         //    console.log("capsCode",capsCodes[i].capsCode);
         //     console.log("api",capsCodes[i].capsScheduleStatue,capsCodes[i].capsSchedule);
@@ -444,6 +443,39 @@ module.exports.update = async (req, res) => {
         res.json(errors)
     }
 }
+module.exports.deleteCapsData =async (req, res) => {
+    const errors = validationResult(req);
+    if (errors.isEmpty())
+        try {
+            console.log(req.body);
+            let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+            let request = new sql.Request(sqlPool)
+            // let capsCodes=await request.query(`SELECT * From capsConfig where capsCode=${req.body.interface}`)
+            if (req.body.api=='getGuestChecks') {
+                
+                const dele = await request.query(`delete  from  GuestChecksLineDetails where busDt = '${req.body.date}'`);
+                const delec = await request.query(`delete  from  getGuestChecks where clsdBusDt = '${req.body.date}'`);
+                console.log(dele,delec);
+
+            }
+            else if (req.body.api=='all') {
+
+              
+            }
+            else{
+              
+            }
+            res.json('done')
+        } catch (error) {
+            console.log("\x1b[31m",error);
+            res.json(error.message)
+        }
+    else{
+        console.log(errors,req.body.Source);
+        res.json(errors)
+    }
+
+}
 module.exports.import = async (req, res) => {
     const errors = validationResult(req);
     if (errors.isEmpty())
@@ -534,5 +566,39 @@ module.exports.import = async (req, res) => {
     else{
         console.log(errors,req.body.Source);
         res.json(errors)
+    }
+}
+
+module.exports.importInterfaceCaps = async (req, res) => {
+    try {
+        let x =[]
+        let sqlPool = await mssql.GetCreateIfNotExistPool(config)
+        let request = new sql.Request(sqlPool)
+        const interfaseCodes = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
+        for (let i = 0; i < interfaseCodes.recordset.length; i++) {
+            console.log(interfaseCodes.recordset[i].interfaceCode);
+            if(interfaseCodes.recordset[i].type =="CAPS"){
+            if (capsScJop[interfaseCodes.recordset[i].interfaceCode+'caps'].nextInvocation() == null ){
+
+                interfaseCodes.recordset[i]['scheduleStatusCaps']=false
+                
+            }
+            else 
+            {
+                interfaseCodes.recordset[i]['scheduleStatusCaps']=true
+            }
+            
+        }
+      
+
+        
+        }
+        
+        res.json(interfaseCodes.recordset)
+        
+       
+    } catch (error){
+        console.log(error);
+        res.json(error.message)
     }
 }

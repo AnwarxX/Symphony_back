@@ -19,6 +19,7 @@ const creatSql = require('../controllers/sql')
 const req = require('express/lib/request');
 appRoutes.post("/import", apiController.import)
 appRoutes.post("/capsImport", capsController.import)
+appRoutes.post("/deleteCapsData",capsController.deleteCapsData)
 appRoutes.get("/loc",async(req,res)=>{
   //the data from the API
   const resp = await axios.post('https://mte4-ohra.oracleindustry.com/bi/v1/VQC/getMenuItemPrices', {
@@ -49,6 +50,7 @@ appRoutes.get("/sunCon", async (req, res) => {
 appRoutes.post('/delete',validation.delete, apiController.delete);//
 appRoutes.post('/deleteInterface',validation.deleteInterface, apiController.deleteInterface);//
 appRoutes.get("/importInterface", sunController.importInterface)
+appRoutes.get("/importInterfaceCaps",capsController.importInterfaceCaps)
 //this endpoint used to retrive all the tables name and their columns
 appRoutes.get('/SysData', apiController.SysData);
 appRoutes.post("/stop", apiController.stop)

@@ -17,7 +17,6 @@ const nodemailer = require("nodemailer");
 const {google} = require('googleapis');
 var CryptoJS = require("crypto-js");
 
-
 const clientId = "488693672463-atpslq7416c2e6v6c014ec9l6vgltecl.apps.googleusercontent.com"
 const clientSecret = "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"
 const redirectURI = "https://developers.google.com/oauthplayground"
@@ -189,7 +188,6 @@ schedule.scheduleJob('0 59 23 * * *', async function () {
 })
 module.exports.stop = async (req, res) => {
     try {
-        console.log(req.body.connectionCode);
         let sqlPool = await mssql.GetCreateIfNotExistPool(config)
         let request = new sql.Request(sqlPool)
         let interfaceCodes=await request.query(`SELECT * From interfaceConnections where connectionCode='${req.body.connectionCode}'`)
@@ -866,13 +864,19 @@ module.exports.importInterface = async (req, res) => {
         let request = new sql.Request(sqlPool)
         const interfaseCode = await request.query(`SELECT * FROM interfaceConnections`);//retrive all interface code
         for (let i = 0; i < interfaseCode.recordset.length; i++) {
-            if (sunJop[interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type].nextInvocation() == null) {
+
+            if (sunJop[interfaseCode.recordset[i].connectionCode+interfaseCode.recordset[i].type].nextInvocation() == null ) {
                 interfaseCode.recordset[i]['scheduleStatus']=false
             }
-            else
+            else 
+            {
                 interfaseCode.recordset[i]['scheduleStatus']=true
+            }
+         
+           
+
         }
-        
+        console.log(interfaseCode.recordset);
        res.json(interfaseCode.recordset)
     } catch (error){
         console.log(error);
