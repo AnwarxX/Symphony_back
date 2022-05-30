@@ -32,11 +32,11 @@ function queries(date) {
         group by CheckID,RevCtrID , CheckNumber `,
         getMenuItemDimensions:`SELECT mm.MajGrpObjNum as majGrpNum, mm.ObjectNumber as num,st.StringText as name FROM MENU_ITEM_MASTER as mm,STRING_TABLE as st where mm.NameID=st.StringNumberID`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
-        GuestChecksLineDetails:`select  CheckID as guestCheckId, max(cast(CheckClose as date) ) as busDt , MENUITEMID miNum , sum(AmountAfterDiscount) 'aggTtl',  sum(Gross_B_DSC)  as gross , T_NAME , 0 as 'guestCheckLineItemId' from Daily_Sales_New
+        GuestChecksLineDetails:`select  CheckID as guestCheckId, max(cast(CheckClose as date) ) as busDt , MENUITEMID miNum , sum(AmountAfterDiscount) 'aggTtl',  sum(Gross_B_DSC)  as gross , 0 as 'guestCheckLineItemId' from Daily_Sales_New
         where cast(CheckClose as date) = '${date}' 
-       group by  CheckID , MENUITEMID,T_NAME`,
+       group by  CheckID , MENUITEMID`,
         getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name , TendMedType as type  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
-        getTenderMediaDailyTotals:`select '' as 'locRef' , busDt  ,RevCtrId as rvcNum , TendMedID,ObjectNumber as tmedNum , sum(Total) 'ttl' , 0 as Cnt from (
+        getTenderMediaDailyTotals:`select '' as 'locRef' , busDt  ,RevCtrId as rvcNum , TendMedID,ObjectNumber as tmedNum , sum(Total) 'ttl' , 0 as cnt from (
             select StringTbl.StringText , Tend.TendMedID ,TendMed.ObjectNumber ,sum(Tend.CurrencyAmount) 'Total'  ,  chkDtl.RevCtrId  , 
             
             format(Checks.CheckClose,'yyyy-MM-dd') 'busDt'  from TENDER_MEDIA_DETAIL Tend
