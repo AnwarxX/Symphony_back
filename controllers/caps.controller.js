@@ -17,11 +17,9 @@ let capsScJop={}
 function getDaysArray(s,e) {for(var a=[],d=new Date(s);d<=new Date(e);d.setDate(d.getDate()+1)){ a.push(new Date(d).toISOString().split("T")[0]);}return a.slice(0, -1);};
 function queries(date) {
     return{
-        getDiscountDailyTotals:`SELECT  max(busDt) as busDt , 
-        rvcNum  , sum(ttl)*-1 as ttl
-        FROM [dbo].[AON_SIMPHONY]
-        where   busDt='${date}'
-        group by rvcNum
+        getDiscountDailyTotals:`select max(cast(CheckClose as date) ) as busDt , RevCtrID as rvcNum ,  sum(Discount) *-1 as ttl 
+        from Daily_Sales_New where cast(CheckClose as date) = '${date}' 
+        group by  RevCtrID        
         `,
         getTaxDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , 
         RevCtrID as rvcNum ,'1' as taxNum , sum(TAX) as taxCollTtl 
@@ -29,13 +27,14 @@ function queries(date) {
         where CAST(CheckOpen as DATE)='${date}'
         group by RevCtrID
         `,
-    //     select  CheckID as guestCheckId, max(cast(CheckClose as date) ) as busDt , MENUITEMID miNum , sum(AmountAfterDiscount) 'aggTtl',  sum(Gross_B_DSC)  as gross ,  0 as 'guestCheckLineItemId' from Daily_Sales_New
-    //     where cast(CheckClose as date) = '${date}' 
-    //    group by  CheckID , MENUITEMID
-        getGuestChecks:`SELECT CheckID as guestCheckId, RevCtrID as rvcNum,CheckNumber as chkNum,CheckOpen as clsdBusDt FROM CHECKS where cast(CheckOpen as Date)='${date}'`,
+        getGuestChecks:`select CheckID guestCheckId , RevCtrID as rvcNum , CheckNumber as chkNum , cast(max(CheckClose) as date) as clsdBusDt from Daily_Sales_New
+        where cast(CheckClose as date)= '${date}' 
+        group by CheckID,RevCtrID , CheckNumber `,
         getMenuItemDimensions:`SELECT mm.MajGrpObjNum as majGrpNum, mm.ObjectNumber as num,st.StringText as name FROM MENU_ITEM_MASTER as mm,STRING_TABLE as st where mm.NameID=st.StringNumberID`,
         getServiceChargeDailyTotals:`SELECT CAST(max(CheckOpen)AS DATE) AS busDt , RevCtrID as rvcNum , sum(AutoGratuity) as ttl FROM CHECKS where CAST(CheckOpen as DATE)='${date}' group by RevCtrID`,
-        GuestChecksLineDetails:`SELECT [guestChecksId] as guestCheckId,[busDt],[miNum],[aggTtl],[gross],[tmedNum],[guestCheckLineItemId] FROM [dbo].[AON_SIMPHONY] where busDt='${date}'`,
+        GuestChecksLineDetails:`select  CheckID as guestCheckId, max(cast(CheckClose as date) ) as busDt , MENUITEMID miNum , sum(AmountAfterDiscount) 'aggTtl',  sum(Gross_B_DSC)  as gross , T_NAME , 0 as 'guestCheckLineItemId' from Daily_Sales_New
+        where cast(CheckClose as date) = '${date}' 
+       group by  CheckID , MENUITEMID,T_NAME`,
         getTenderMediaDimensions:`SELECT TENDER_MEDIA.ObjectNumber as num, STRING_TABLE.StringText as name , TendMedType as type  FROM TENDER_MEDIA,STRING_TABLE where TENDER_MEDIA.NameID=STRING_TABLE.StringNumberID`,
         getTenderMediaDailyTotals:`select '' as 'locRef' , busDt  ,RevCtrId as rvcNum , TendMedID,ObjectNumber as tmedNum , sum(Total) 'ttl' , 0 as Cnt from (
             select StringTbl.StringText , Tend.TendMedID ,TendMed.ObjectNumber ,sum(Tend.CurrencyAmount) 'Total'  ,  chkDtl.RevCtrId  , 
@@ -55,6 +54,7 @@ function queries(date) {
         getTaxDimensions:`SELECT TAX.TaxIndex as num,STRING_TABLE.StringText as name FROM TAX,STRING_TABLE where TAX.NameID=STRING_TABLE.StringNumberID`,
     }
 }
+
 capsSched()
 async function capsSched() {
     try {
