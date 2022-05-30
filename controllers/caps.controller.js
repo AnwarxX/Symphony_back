@@ -459,11 +459,19 @@ module.exports.deleteCapsData =async (req, res) => {
 
             }
             else if (req.body.api=='all') {
-
+                const delets = await request.query(`delete  from  getGuestChecks where clsdBusDt = '${req.body.date}'`);
+                const tale = await request.query(`SELECT name FROM sys.tables where name like '%Daily%' or name='GuestChecksLineDetails'`)
+                console.log(tale.recordset.name);
+                for (let i = 0; i < tale.recordset.length; i++) {
+                    const dele = await request.query(`delete  from  ${tale.recordset[i].name} where busDt = '${req.body.date}'`);
+                    
+                }
+                const dele = await request.query(`delete  from  getGuestChecks where clsdBusDt = '${req.body.date}'`)
               
             }
             else{
-              
+                const x = req.body.api
+                const dele = await request.query(`delete  from  ${x} where busDt = '${req.body.date}'`);
             }
             res.json('done')
         } catch (error) {
